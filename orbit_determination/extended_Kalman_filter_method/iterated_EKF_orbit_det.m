@@ -1,4 +1,4 @@
-function [x_hat, fem_states] = iterated_EKF_orbit_det(time, x0_guess, y_meas, Phi0_vec, R, max_count, mom_states, freq, mu)
+function [x_hat, fem_states] = iterated_EKF_orbit_det(time, x0_guess, y_meas, R, max_count, mom_states, freq, mu)
 %ITERATED_EKF_ORBIT_DET Use extended Kalman filter to find IC
 %   This is an implementation of the algorithm described in:
 %   Optimal Estimation of Dynamic Systems, 2nd Edition
@@ -35,10 +35,12 @@ P_estimates_backwards         = zeros(m, n);
 state_estimates_forwards(1,:) = x0_guess';
 P_estimates_forwards(1,:)     = diag(P0)';
 
-disp('Entering main loop, standby...')
+fprintf('Entering main loop, standby...')
 
 % Main loop: don't exceed maximum number of iterations
 while count <= max_count
+
+  fprintf ('%i/%i ', count, max_count);
 
   % Process forwards
   for k = 1:m-1
@@ -112,20 +114,35 @@ while count <= max_count
     X0 = [x_est; reshape(P_est, numel(P_est), 1)];
 
     % Store values for plotting later
-    state_estimates_backwards(k+1,:) = x_est';
-    P_estimates_backwards(k+1,:) = diag(P_est)';
+    state_estimates_backwards(k,:) = x_est';
+    P_estimates_backwards(k,:)     = diag(P_est)';
 
   end % backwards process
 
   % Reset covariance and use estimate from this iteration on the next
   X0 = [x_est; reshape(P0, numel(P0), 1)]; 
 
-  x_est'
-
   % Increment counter
   count = count + 1;
 
+  % Clear these containers before looping again
+  if count <= max_count
+    clear state_estimates_forwards state_estimates_backwards;
+    state_estimates_forwards      = zeros(m, n);
+    state_estimates_backwards     = zeros(m, n);
+    P_estimates_forwards          = zeros(m, n);
+    P_estimates_backwards         = zeros(m, n);
+    state_estimates_forwards(1,:) = x_est';
+    P_estimates_forwards(1,:)     = diag(P0)';
+  end
+
+  % TODO: add a test for convergence, like if r_est is changing by less than 10 m and r_dot is changing by less than .1 km/sec, and if so, break. This is just an optimization thing - do at the end.
+
 end % main loop
+
+% The state_estimates_backwards first state will be zeros, because k
+% is only iterated to 2. So, set that point (t=0) equal to the first state in state_estimates_forwards
+state_estimates_backwards(1,:) = state_estimates_forwards(1,:);
 
 % Return results
 x_hat = x_est;

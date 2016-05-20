@@ -11,7 +11,7 @@ cost_change = abs((cost - last_cost)/last_cost);
 
 clear fem_states;
 
-while (count < max_count) && (cost_change > 0.01)
+while (count <= max_count) && (cost_change > 0.01)
 
   % Integrate the system of equations to get states, Phi, and Psi
   big_vector       = [x_hat; Phi0_vec];
@@ -44,7 +44,7 @@ while (count < max_count) && (cost_change > 0.01)
 
 end
 
-if count == max_count
+if count == max_count - 1
     fprintf('\nNLS loop reached max count of %i and stopped.\n',max_count);
 else
     fprintf('\nNLS loop ended after %i iterations when cost change was < 1%%.\n',count-1);
