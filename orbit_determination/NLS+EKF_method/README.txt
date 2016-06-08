@@ -30,4 +30,5 @@ Files:
   created in the python file create_plots.py
 
 My preferred way to run this on the terminal command line is:
-  > clear; octave main.m; python create_plots.py 
+  > bash start_sim.sh $opt
+where $opt is the test case to evaluate: 1, 2, or 3

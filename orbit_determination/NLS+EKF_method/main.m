@@ -1,35 +1,33 @@
-% Tracie Perez
+function [] = main(test_case)
+%MAIN Orbit determination from Doppler shift measurements.
 %
-% Orbit determination from Doppler shift measurements.
+%  Author: Tracie Perez
 %
-% The purpose of this simulation is to estimate the initial state of
-% the femtosatellite's orbit (r, r_dot) using Doppler shift
-% measurements made on the mothersat.
+%  The purpose of this simulation is to estimate the initial state
+%  of the femtosatellite's orbit (r, r_dot) using Doppler shift
+%  measurements made on the mothersat.
 %
-% These scripts are configured for octave, but can be used with
-% MATLAB if adjustments are made to the ode45 calls.
+%  One argument required:
+%    test_case : 1, 2, or 3
 %
-% My preferred way to run this on the terminal command line is:
-% > clear; octave main.m; python create_plots.py 
+%  These scripts are configured for octave, but can be used with
+%  MATLAB if adjustments are made to the ode45 calls.
 %
-
-clc; close all; clear all;
-
-% Set test_case to 1, 2, or 3, to try out the different test cases
-test_case  = 3;                      %      <--- LOOK
+%
 
 % Constants chosen for this simulation
-mu         = 398600;                 % km^3/s^2, grav param. of Earth
-freq       = 435e6;                  % Hz, frequency of tx'ed signal
-rad_mom    = 26600;                  % km, the GPS S/V orbit
-deploy_v   = 2/1000;                 % km/sec (deployment velocity)
-t0         = 0;                      % initial time
-dt         = 1;                      % seconds, time interval
-m          = 3000;                   % how many measurements to make
-noise_std  = 10;                     % standard deviation of noise
-max_count  = 5;                      % Max # of iterations to allow
-m_NLS      = 600;                    % measurements to use in NLS -
-                                     % any < gives badly cond matrix
+mu         = 398600;  % km^3/s^2, gravitational parameter of Earth
+rad_planet = 6378;    % km, radius of Earth
+freq       = 435e6;   % Hz, frequency of transmitted signal
+rad_mom    = 26600;   % km, the GPS S/V orbit
+deploy_v   = 2/1000;  % km/sec (deployment velocity)
+t0         = 0;       % initial time
+dt         = 1;       % seconds, time interval
+m          = 5000;    % how many measurements to (attempt to) make
+noise_std  = 10;      % standard deviation of noise
+max_count  = 5;       % Max # of iterations to allow
+m_NLS      = 600;     % meas's for NLS; any < gives badly cond matrix
+
 %-------------------------------------------------------------------%
 
 % Octave package odepkg must be installed and loaded here
@@ -50,7 +48,6 @@ if test_case == 1
   y_dot0_fem  = sqrt(mu/rad_fem);    % km/sec (circular orbit)
   X0_fem      = [rad_fem; 0; -deploy_v; y_dot0_fem];
   guess_error = [1; 1; .1; .1];      % add to true IC to get guess
-  % noise_std   = noise_std/10;        % take it down to 1 Hz
 elseif test_case == 2
   % Test 2: femsat already decayed in altitude, position on x-axis
   rad_fem     = 400 + 6371;          % km, the ISS orbit
@@ -72,7 +69,8 @@ elseif test_case == 3
                   rad_mom*sind(30);
                  -vel_mom*cosd(60);
                   vel_mom*sind(60)];
-  guess_error = [300; 300; 3; 3];    % add to true IC to get guess
+  guess_error = [10; 10; 1; 1];    % add to true IC to get guess
+  noise_std   = 3;
 end
 
 % Initial state guess: [r_x r_y r_x_dot r_y_dot]'
@@ -96,8 +94,11 @@ if test_case == 1
 end
 
 % Generate measurement data
-y_true   = get_measurements(fem_states, mom_states, freq);
-y_meas   = y_true + noise_std*randn(size(y_true));
+meas_data = get_measurements(time, fem_states, mom_states, freq, ...
+                             rad_planet, 1);
+time_meas = meas_data(:,1);
+y_true    = meas_data(:,2);
+y_meas    = y_true + noise_std*randn(size(y_true));
 
 % Initialize matrices and vectors
 n        = length(x0_guess);        % Number of states
@@ -107,13 +108,17 @@ R_big    = noise_std^2*eye(m_NLS);  % Obtain R (covariance) matrix
 invR     = inv(R_big);              % Compute inverse of R matrix
 
 % Print out some info for confirmation
+disp('')
 fprintf('\tIterated extended Kalman filter for orbit determination');
-fprintf(', test case: %i\n', test_case)
-fprintf('\nRead in %i measurements. First %i to be used for NLS.\n',
-        m, m_NLS);
+fprintf(', test case: %i\n\n', test_case)
+fprintf('%i time points evaluated, %i measurements created', m, ...
+        size(y_meas,1));
+fprintf(' (%.1f %%)\n', (size(y_meas,1)/m)*100);
+fprintf('First %i of the total %i measurements to be used for NLS\n',
+        m_NLS, size(y_meas,1));
 fprintf('dt = %.3f seconds.\n',dt);
 fprintf('Std of noise specified to be: %.1f Hz\n',noise_std);
-fprintf('Number of iterations: %i\n', max_count);
+fprintf('Number of iterations for NLS and EKF: %i\n', max_count);
 fprintf('Initial state of mothersat: [%7.1f %7.1f %7.3f %7.3f]\n',...
         X0_mom);
 fprintf('Initial state of femsat:    [%7.1f %7.1f %7.3f %7.3f]\n',...
@@ -123,37 +128,68 @@ fprintf('Initial state guess:        [%7.1f %7.1f %7.3f %7.3f]\n',...
 fprintf('Initial state guess error:  [%7.1f %7.1f %7.3f %7.3f]\n',...
         guess_error);
 
-% Step 1: Call the NLS routine for the first 100 measurements to
+% Step 1: Call the NLS routine for the first m_NLS measurements to
 % generate an initial state guess for the EKF.
-[x_est_NLS, fem_state_est_NLS] =                           ...
-nonlinear_least_squares_orbit_det(time(1:m_NLS), x0_guess, ...
-y_meas(1:m_NLS), Phi0_vec, invR, max_count,                ...
-mom_states(1:m_NLS,:), freq, mu);
-disp('Result from NLS, just to use as guess for EKF:')
-print_results(x0_true, x0_guess, x_est_NLS);
 
-% Step 2: Use the resulting initial state guess from the NLS method
-% to initialize the EKF algorithm (uses all measurements).
-[x_estimate, fem_state_est_EKF] = iterated_EKF_orbit_det(time, ...
-x_est_NLS, y_meas, R, max_count, mom_states, freq, mu);
-
-% Print final results
-disp('Results from EKF:')
-print_results(x0_true, x0_guess, x_estimate);
-
-% Save data for later plotting. (I prefer using python's matplotlib
-% to octave's gnuplot.)
-data_out = zeros(m,13);
-data_out(:,1) = time';
-data_out(:,2:5) = mom_states;
-data_out(:,6:9) = fem_states;
-data_out(:,10:13) = fem_state_est_EKF;
-file_id = fopen('measurement_data.txt', 'w');
-for ii = 1:m
-  fprintf(file_id,'%.6e %.6e %.6e\n',time(ii),y_true(ii),y_meas(ii));
+% First - check to see if there are actually measurements for the
+% first m_NLS measurements
+continue_flag = 1;
+if m_NLS > size(y_meas,1)
+  fprintf('Error: trying to use NLS on first %i measurements, but there are only %i measurements total.\n', m_NLS, size(y_meas,1));
+  continue_flag = 0;
 end
-file_id = fopen('sat_states.txt','w');
-for ii = 1:m
-  fprintf(file_id,'%.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e\n', data_out(ii,:));
+if ~continue_flag
+  fprintf('Not able to run NLS on first %i measurements. Exiting.\n', m_NLS);
 end
-status = fclose("all");
+if continue_flag
+  for index = 2:m_NLS
+    if time_meas(index) ~= (time_meas(index-1)+dt)
+      fprintf('Error: There is a gap in the first %i measurements.\n', m_NLS);
+      continue_flag = 0;
+    end
+  end
+  if ~continue_flag
+    fprintf('Trying to use first %i measurements for NLS estimate, but they are not continuous. Try a smaller number. Exiting. \n', m_NLS);
+  end
+end
+
+% Second - if so, proceed with NLS run for m_NLS measurements
+if continue_flag
+  [x_est_NLS, fem_state_est_NLS] =                           ...
+  nonlinear_least_squares_orbit_det(time(1:m_NLS), x0_guess, ...
+  y_meas(1:m_NLS), Phi0_vec, invR, max_count,                ...
+  mom_states(1:m_NLS,:), freq, mu, rad_planet);
+  disp('Result from NLS, just to use as guess for EKF:')
+  print_results(x0_true, x0_guess, x_est_NLS);
+
+  % Step 2: Use the resulting initial state guess from the NLS method
+  % to initialize the EKF algorithm (uses all measurements).
+  [x_estimate, fem_state_est_EKF] = iterated_EKF_orbit_det(time, ...
+  x_est_NLS, meas_data, R, max_count, mom_states, freq, mu, ...
+  rad_planet);
+
+  % Print final results
+  fprintf('\nResults from EKF:\n')
+  print_results(x0_true, x0_guess, x_estimate);
+
+  % Save data for later plotting. (I prefer using python's matplotlib
+  % to octave's gnuplot.)
+  file_id = fopen('measurement_data.txt', 'w');
+  for ii = 1:size(meas_data,1)
+    fprintf(file_id,'%.6e %.6e %.6e\n',time_meas(ii), y_true(ii), ...
+                                       y_meas(ii));
+  end
+
+  file_id = fopen('sat_states.txt','w');
+  data_out          = zeros(m,13);
+  data_out(:,1)     = time';                % time of states
+  data_out(:,2:5)   = mom_states;           % truth
+  data_out(:,6:9)   = fem_states;           % truth
+  data_out(:,10:13) = fem_state_est_EKF;    % estimate of fem state
+  for ii = 1:m
+    fprintf(file_id,'%.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e\n', data_out(ii,:));
+  end
+  status = fclose("all");
+else
+  disp('Process halted.')
+end

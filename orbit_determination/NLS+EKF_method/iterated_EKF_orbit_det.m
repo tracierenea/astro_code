@@ -1,4 +1,4 @@
-function [x_hat, fem_states] = iterated_EKF_orbit_det(time, x0_guess, y_meas, R, max_count, mom_states, freq, mu)
+function [x_hat, fem_states] = iterated_EKF_orbit_det(time, x0_guess, meas_data, R, max_count, mom_states, freq, mu, rad_planet)
 %ITERATED_EKF_ORBIT_DET Use extended Kalman filter to find IC
 %   This is an implementation of the algorithm described in:
 %   Optimal Estimation of Dynamic Systems, 2nd Edition
@@ -12,20 +12,45 @@ function [x_hat, fem_states] = iterated_EKF_orbit_det(time, x0_guess, y_meas, R,
 %   measurement data type under study in this simulation (i.e.
 %   Doppler shift).
 %
-max_step = (time(end)-time(1))/20;        % [1]
-step_0   = max_step/3;                    % [1]
+%   Inputs:
+%     time          : array of time instances for mom states (i.e.
+%                     the time interval to analyze)
+%     x0_guess      : a guess for the initial state solution
+%     meas_data     : 2-column matrix, [time   measurements]
+%     R             : measurement covariance
+%     max_count     : max # of iterations to allow
+%     mom_states    : matrix of the mothersatellite's states
+%     freq          : transmission frequency
+%     mu            : gravitational parameter of body being orbitted
+%     rad_planet    : radius of the planetary body being orbitted
+%
+%   Output:
+%     y             : 2-column matrix, [time measurements]
+%
+
+clear indices
+time_meas= meas_data(:,1);
+y_meas   = meas_data(:,2);
+max_step = (time(end)-time(1))/20;        % see footnote [1]
+step_0   = max_step/3;                    % see footnote [1]
 odeopt   = odeset ('RelTol', 1e-12, ...
                    'AbsTol', 1e-12, ...
                    'InitialStep', step_0, ...
                    'MaxStep', max_step);
 
 % Initialize parameters
-n     = length(x0_guess);                 % Number of states
-m     = size(y_meas, 1);                  % number of measurements
-P0    = 1*eye(n);                         % Initial covariance matrix
-X0    = [x0_guess;
-         reshape(P0, numel(P0), 1)];      % Stack state and covar.
-count = 1;
+n        = length(x0_guess);              % Number of states
+m        = size(y_meas, 1);               % number of measurements
+m_count  = 1;                             % initialize a meas counter
+P0       = 1*eye(n);                      % Initial covariance matrix
+X0       = [x0_guess;
+            reshape(P0, numel(P0), 1)];   % Stack state and covar.
+count    = 1;
+
+% Identify the indices of the time vector when there are measurements
+for index = 1:length(time_meas)
+  indices(index,1) = find(time == time_meas(index));
+end
 
 % Allocate memory for storage containers
 state_estimates_forwards      = zeros(m, n);
@@ -42,39 +67,50 @@ while count <= max_count
 
   fprintf ('%i/%i ', count, max_count);
 
-  % Process forwards
-  for k = 1:m-1
+  % Process forwards; loop over each time step in the interval
+  for index = 1:size(time, 1)- 1
 
     % Propagate the state and covariance together
-    time_span    = [time(k) time(k+1)];
+    time_span    = [time(index) time(index+1)];
     [~, results] = ode45(@EKF_sys_eqns, time_span, X0, odeopt, mu,n);
 
-    % Estimated satellite state at time k+1
+    % Estimated satellite state at time index+1
     x_est = results(end, 1:n)';
 
-    % Covariance matrix at time k+1
+    % Covariance matrix at time index+1
     P_est = reshape(results(end, n+1:end), n, n);
 
-    % Calculate the H matrix
-    mom_state = mom_states(k,:)';
-    H = get_H_matrix_EKF(x_est, mom_state, freq);
+    % Check if there is a measurement for this instant. If so,
+    % invoke the state update step. If not, the state estimate will
+    % be propagated forward
+    if (m_count <= size(indices,1)) && (index == indices(m_count))
 
-    % Calculate the gain matrix K
-    K = P_est*H'*inv(H*P_est*H' + R);
+      % Calculate the H matrix at time index+1
+      mom_state = mom_states(index+1,:)';
+      H = get_H_matrix_EKF(x_est, mom_state, freq);
 
-    % Update the state and covariance matrix
-    h = get_measurements(x_est', mom_state', freq);
-    x_est = x_est + K*(y_meas(k+1,1) - h);
-    P_est = (eye(n) - K*H)*P_est;
+      % Calculate the gain matrix K for time index+1
+      K = P_est*H'*inv(H*P_est*H' + R);
+
+      % Update the state and covariance matrix
+      h = get_measurements(time(index), x_est', mom_state', ...
+                           freq, rad_planet, 0); 
+      x_est = x_est + K*(y_meas(m_count,1) - h(2));
+      P_est = (eye(n) - K*H)*P_est;
+
+      % increment counter
+      m_count = m_count + 1;
+
+    end % if there is a measurement for this instant
 
     % Form the initial condition for the next sample interval
     X0 = [x_est; reshape(P_est, numel(P_est), 1)];
 
     % Store values for plotting later
-    state_estimates_forwards(k+1,:) = x_est';
-    P_estimates_forwards(k+1,:) = diag(P_est)';
+    state_estimates_forwards(index+1,:) = x_est';
+    P_estimates_forwards(index+1,:) = diag(P_est)';
 
-  end % forward process 
+  end % for index = 1:size(time, 1)- 1 // forward process
 
   % Final state from forward pass becomes initial condition for
   % backward pass
@@ -85,43 +121,56 @@ while count <= max_count
   P_estimates_backwards(m,:) = diag(P0)';
   X0 = [X_f; reshape(P0, numel(P0), 1)]; 
 
-  % Process backwards
-  for k = m:-1:2
+  % Decrement counter
+  m_count = m_count - 1;
+
+  % Process backwards; loop over each time step in the interval
+  for index = size(time, 1):-1:2
+  % for index = m:-1:2
 
     % Propagate the state and covariance together
-    time_span    = [time(k) time(k-1)];
+    time_span    = [time(index) time(index-1)];
     [~, results] = ode45(@EKF_sys_eqns, time_span, X0, odeopt, mu,n);
 
-    % Estimated satellite state at time k+1
+    % Estimated satellite state at time index-1
     x_est = results(end, 1:n)';
-
-    % Covariance matrix at time k+1
+    
+    % Covariance matrix at time index-1
     P_est = reshape(results(end, n+1:end), n, n);
 
-    % Calculate the H matrix
-    mom_state = mom_states(k,:)';
-    H = get_H_matrix_EKF(x_est, mom_state, freq);
+    % Check if there is a measurement for this instant. If so,
+    % invoke the state update step. If not, the state estimate will
+    % be propagated forward
+    if (m_count <= size(indices,1)) && (index == indices(m_count))
 
-    % Calculate the gain matrix K
-    K = P_est*H'*inv(H*P_est*H' + R);
+      % Calculate the H matrix
+      mom_state = mom_states(index,:)';
+      H = get_H_matrix_EKF(x_est, mom_state, freq);
 
-    % Update the state and covariance matrix
-    h = get_measurements(x_est', mom_state', freq);
-    x_est = x_est + K*(y_meas(k,1) - h);
-    P_est = (eye(n) - K*H)*P_est;
+      % Calculate the gain matrix K
+      K = P_est*H'*inv(H*P_est*H' + R);
+
+      % Update the state and covariance matrix
+      h = get_measurements(time(index), x_est', mom_state', ...
+                           freq, rad_planet, 0);
+      x_est = x_est + K*(y_meas(m_count,1) - h(2));
+      P_est = (eye(n) - K*H)*P_est;
+
+      % increment counter
+      m_count = m_count - 1;
+    end % if there is a measurement for this instant
 
     % Form the initial condition for the next sample interval
     X0 = [x_est; reshape(P_est, numel(P_est), 1)];
 
     % Store values for plotting later
-    state_estimates_backwards(k,:) = x_est';
-    P_estimates_backwards(k,:)     = diag(P_est)';
+    state_estimates_backwards(index,:) = x_est';
+    P_estimates_backwards(index,:)     = diag(P_est)';
 
-  end % backwards process
+  end % for index = size(time, 1):-1:2 // backwards process
 
   % Reset covariance and use estimate from this iteration on the next
   X0 = [x_est; reshape(P0, numel(P0), 1)];
-
 
   % Increment counter
   count = count + 1;
@@ -148,6 +197,7 @@ state_estimates_backwards(1,:) = state_estimates_forwards(1,:);
 % Return results
 x_hat = x_est;
 fem_states = state_estimates_backwards;
+
 
 % Footnote [1]
 % "InitialStep and MaxStep in ode23..ode78 are not computed (as like

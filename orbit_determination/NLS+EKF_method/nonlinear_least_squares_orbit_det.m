@@ -1,4 +1,4 @@
-function [x_hat, fem_states] = nonlinear_least_squares_orbit_det(time, x0_guess, y_meas, Phi0_vec, invR, max_count, mom_states, freq, mu)
+function [x_hat, fem_states] = nonlinear_least_squares_orbit_det(time, x0_guess, y_meas, Phi0_vec, invR, max_count, mom_states, freq, mu, radius_planet)
 
 x_hat       = x0_guess;          % "hat" denotes current estimate
 n           = length(x_hat);     % Number of states
@@ -20,7 +20,9 @@ while (count <= max_count) && (cost_change > 0.01)
 
   % Obtain the predicted, or estimated, measurements based on the
   % current estimate
-  y_hat = get_measurements(fem_states, mom_states, freq);
+  temp  = get_measurements(time, fem_states, mom_states, freq, ...
+                           radius_planet, 0);
+  y_hat = temp(:,2);
 
   % Obtain the H matrix based on current estimate
   H = get_H_matrix_NLS(results, mom_states, freq);
