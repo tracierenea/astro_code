@@ -170,7 +170,7 @@ if continue_flag
 
   % Print final results
   fprintf('\nResults from EKF:\n')
-  print_results(x0_true, x0_guess, x_estimate);
+  print_results(x0_true, x_est_NLS, x_estimate);
 
   % Save data for later plotting. (I prefer using python's matplotlib
   % to octave's gnuplot.)
