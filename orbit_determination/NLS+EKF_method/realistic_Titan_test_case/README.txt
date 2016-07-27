@@ -3,12 +3,12 @@
 My preferred way to run this on the terminal command line is:
   > bash start_sim.sh $opt
 or
-  > bash start_sim_MC.sh $opt
+  > bash start_sim_MC.sh $opt $num_MC
     
 where:
 - $opt is the test case to evaluate: 1, 2, or 3
 - start_sim does just one run for the test case conditions hard-coded in main.m
-- start_sim_MC does a Monte Carlo run as defined in main_MC.m
+- start_sim_MC does $num_MC Monte Carlo runs as defined in main_MC.m
 
 --------------------------------------------------------------------------------
 
