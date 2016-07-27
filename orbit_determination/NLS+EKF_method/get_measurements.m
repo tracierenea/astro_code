@@ -35,8 +35,7 @@ for ii = 1:m
   rho_dot_mag =  get_rho_dot_mag(r,r_dot,R,R_dot);
   angle_mom   =  atan2(y_mom, x_mom);
   angle_fem   =  atan2(y_fem, x_fem);
-  temp        =  asin(radius_planet/R);
-  angle_test  =  pi/2 - temp;
+  angle_test  =  acos(radius_planet/R);
   max_angle   =  angle_mom + angle_test;
   min_angle   =  angle_mom - angle_test;
 
