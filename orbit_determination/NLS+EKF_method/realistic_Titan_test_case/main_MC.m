@@ -148,14 +148,12 @@ for counter = 1:MC_runs
   fprintf('MC run: %i of %i\n', counter, MC_runs);
 
   % Add error to true initial state to get the guess
-  x0_true  = X0_fem;
   if test_case == 1
     guess_error = [randn; randn; .1*randn; .1*randn];
   elseif test_case == 2
     guess_error = [randn; randn; randn; randn];
   elseif test_case == 3
-    % guess_error = [150*randn; 150*randn; 0.5*randn; 0.5*randn];try2
-    guess_error = [25*randn; 25*randn; 0.1*randn; 0.1*randn]; %try3
+    guess_error = [25*randn; 25*randn; 0.1*randn; 0.1*randn];
   end
   x0_guess = X0_fem + guess_error;
 

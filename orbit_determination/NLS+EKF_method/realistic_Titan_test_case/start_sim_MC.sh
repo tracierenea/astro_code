@@ -23,3 +23,6 @@ echo -e "Running script for test case $1.\n"
 echo "Executing command: "
 echo "  > octave --silent --eval main_MC($1, $2)"
 octave --silent --eval "main_MC($1, $2)"
+
+# Create plots using python script.
+python create_plots_MC.py $1;
