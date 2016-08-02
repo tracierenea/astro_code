@@ -27,10 +27,18 @@ rad_mom    = 1500+rad_Titan;      % km
 deploy_v   = 2/1000;              % km/sec (deployment velocity)
 t0         = 0;                   % initial time
 dt         = 1;                   % seconds, time interval
-m          = 5000;                % try to make this many meas's
+m          = 10000;               % try to make this many meas's
 max_count  = 3;                   % Max # of iterations to allow
-m_NLS      = 800;                 % meas's for NLS
+m_NLS      = 1000;                % meas's for NLS
 
+% Standard deviation of noise
+if     test_case == 1
+  noise_std  = 10;
+elseif test_case == 2
+  noise_std  = 500;
+elseif test_case == 3
+  noise_std  = 10;
+end
 %-------------------------------------------------------------------%
 
 % Octave package odepkg must be installed and loaded here
@@ -50,15 +58,15 @@ if test_case == 1
   rad_fem     = rad_mom;
   y_dot0_fem  = sqrt(mu/rad_fem);    % km/sec (circular orbit)
   X0_fem      = [rad_fem; 0; -deploy_v; y_dot0_fem];
-  guess_error = [1; 1; .1; .1];      % add to true IC to get guess
-  noise_std   = 10;                  % standard deviation of noise
+  % guess_error = [1; 1; .1; .1];      % add to true IC to get guess
+  guess_error = [randn; randn; .1*randn; .1*randn];
 elseif test_case == 2
   % Test 2: femsat already decayed in altitude, position on x-axis
   rad_fem     = 400 + rad_Titan;     % km
   y_dot0_fem  = sqrt(mu/rad_fem);    % km/sec (circular orbit)
   X0_fem      = [rad_fem; 0; 0; y_dot0_fem];
-  guess_error = [50; 50; .1; .1];    % add to true IC to get guess
-  noise_std   = 500;                 % standard deviation of noise
+  % guess_error = [50; 50; .1; .1];    % add to true IC to get guess
+  guess_error = [25*randn; 25*randn; 0.1*randn; 0.1*randn];
 elseif test_case == 3
   % Test 3: mom at 30 degrees and fem at 60 degrees off of x-axis
   % (not including the deployment velocity component)
@@ -74,8 +82,9 @@ elseif test_case == 3
                   rad_mom*sind(30);
                  -vel_mom*cosd(60);
                   vel_mom*sind(60)];
-  guess_error = [150; 150; 0.5; 0.5];   % add to true IC to get guess
-  noise_std   = 10;                  % standard deviation of noise
+  % guess_error = [150; 150; 0.5; 0.5];   % add to true IC to get guess
+  guess_error = [25*randn; 25*randn; 0.1*randn; 0.1*randn];
+
 end
 
 % Initial state guess: [r_x r_y r_x_dot r_y_dot]'
@@ -83,10 +92,10 @@ x0_true  = X0_fem;
 x0_guess = X0_fem + guess_error;
 
 % Generate truth data
-tf   = t0 + (m-1)*dt;                % seconds, final time
-time = [t0:dt:tf]';                  % time vector for analysis
-[~, fem_states] = ode45(@two_body_EOM, time, X0_fem, mu);
-[~, mom_states] = ode45(@two_body_EOM, time, X0_mom, mu);
+tf       = t0 + (m-1)*dt;                % seconds, final time
+time_vec = [t0:dt:tf]';                  % time vector for analysis
+[~, fem_states] = ode45(@two_body_EOM, time_vec, X0_fem, mu);
+[~, mom_states] = ode45(@two_body_EOM, time_vec, X0_mom, mu);
 
 % For the test case #1 scenario: at the deployment epoch, the range
 % between the sats is 0, and we'll have a divide by 0 error. So,
@@ -94,13 +103,13 @@ time = [t0:dt:tf]';                  % time vector for analysis
 if test_case == 1
     mom_states = mom_states(2:end,:);
     fem_states = fem_states(2:end,:);
-    time       = time(2:end,:);
+    time_vec   = time_vec(2:end,:);
     m          = m-1;
 end
 
 % Generate measurement data
-meas_data = get_measurements(time, fem_states, mom_states, freq, ...
-                             rad_Titan, 1);
+meas_data = get_measurements(time_vec, fem_states, mom_states, ...
+                             freq, rad_Titan, 1);
 time_meas = meas_data(:,1);
 y_true    = meas_data(:,2);
 y_meas    = y_true + noise_std*randn(size(y_true));
@@ -123,11 +132,13 @@ fprintf('First %i of the total %i measurements to be used for NLS\n',
         m_NLS, size(y_meas,1));
 fprintf('dt = %.3f seconds.\n',dt);
 fprintf('Std of noise specified to be: %.1f Hz\n',noise_std);
-fprintf('Number of iterations for NLS and EKF: %i\n', max_count);
-fprintf('Initial state of mothersat: [%7.1f %7.1f %7.3f %7.3f]\n',...
+fprintf('Number of iterations for NLS and EKF: %i\n\n', max_count);
+fprintf('Initial state of mothersat: [%7.1f %7.1f %7.3f %7.3f]', ...
         X0_mom);
-fprintf('Initial state of femsat:    [%7.1f %7.1f %7.3f %7.3f]\n',...
+fprintf('  (truth)\n');
+fprintf('Initial state of femsat:    [%7.1f %7.1f %7.3f %7.3f]', ...
         X0_fem);
+fprintf('  (truth)\n');
 fprintf('Initial state guess:        [%7.1f %7.1f %7.3f %7.3f]\n',...
         x0_guess);
 fprintf('Initial state guess error:  [%7.1f %7.1f %7.3f %7.3f]\n',...
@@ -148,8 +159,9 @@ if ~continue_flag
 end
 if continue_flag
   for index = 2:m_NLS
-    if time_meas(index) ~= (time_meas(index-1)+dt)
-      fprintf('Error: There is a gap in the first %i measurements.\n', m_NLS);
+    if (time_meas(index) - (time_meas(index-1)+dt)) > 1e-12
+      fprintf('Error: There is a gap in the first');
+      fprintf(' %i measurements.\n', m_NLS);
       continue_flag = 0;
     end
   end
@@ -160,26 +172,27 @@ end
 
 % Second - if so, proceed with NLS run for m_NLS measurements
 if continue_flag
-  [x_est_NLS, fem_state_est_NLS] =                           ...
-  nonlinear_least_squares_orbit_det(time(1:m_NLS), x0_guess, ...
-  y_meas(1:m_NLS), Phi0_vec, invR, max_count,                ...
+  [x_est_NLS, fem_state_est_NLS] =                               ...
+  nonlinear_least_squares_orbit_det(time_vec(1:m_NLS), x0_guess, ...
+  y_meas(1:m_NLS), Phi0_vec, invR, max_count,                    ...
   mom_states(1:m_NLS,:), freq, mu, rad_Titan);
-  disp('Result from NLS, just to use as guess for EKF:')
+  fprintf('\nResult from NLS, to use as guess for EKF:')
   print_results(x0_true, x0_guess, x_est_NLS);
 
   % Step 2: Use the resulting initial state guess from the NLS method
   % to initialize the EKF algorithm (uses all measurements).
-  [x_estimate, fem_state_est_EKF] = iterated_EKF_orbit_det(time, ...
-  x_est_NLS, meas_data, R, max_count, mom_states, freq, mu, ...
-  rad_Titan);
+  [x_estimate, fem_state_est_EKF] = iterated_EKF_orbit_det(   ...
+    time_vec, x_est_NLS, meas_data, R, max_count, mom_states, ...
+    freq, mu, rad_Titan);
 
   % Print final results
-  fprintf('\nResults from EKF:\n')
+  fprintf('Results from EKF:')
   print_results(x0_true, x_est_NLS, x_estimate);
 
   % Save data for later plotting. (I prefer using python's matplotlib
   % to octave's gnuplot.)
   file_id = fopen('measurement_data.txt', 'w');
+  fprintf(file_id,'%.6e %.6e %.6e %.6e\n',x0_guess);
   for ii = 1:size(meas_data,1)
     fprintf(file_id,'%.6e %.6e %.6e\n',time_meas(ii), y_true(ii), ...
                                        y_meas(ii));
@@ -187,7 +200,7 @@ if continue_flag
 
   file_id = fopen('sat_states.txt','w');
   data_out          = zeros(m,13);
-  data_out(:,1)     = time';                % time of states
+  data_out(:,1)     = time_vec';            % time of states
   data_out(:,2:5)   = mom_states;           % truth
   data_out(:,6:9)   = fem_states;           % truth
   data_out(:,10:13) = fem_state_est_EKF;    % estimate of fem state

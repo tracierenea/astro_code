@@ -28,7 +28,6 @@ if test_case == 1:
   y_dot0_fem  = sqrt(mu/rad_fem);
   X0_true     = array([rad_fem, 0])
 elif test_case == 2:
-  print "here"
   rad_fem     = 400 + rad_Titan;
   y_dot0_fem  = sqrt(mu/rad_fem);
   X0_true     = array([rad_fem, 0])
@@ -50,19 +49,22 @@ file_name = 'MC_results_case' + str(test_case) + '.txt'
 data      = loadtxt(file_name)
 x0_guess  = data[:,1]  # r_x(0) - initial guess
 y0_guess  = data[:,2]  # r_y(0) - initial guess
+print "Opened file: ", file_name
+print "Read in", data.shape[0], "points"
+
 
 #### Throw out outlier solutions: if x(0) or y(0) has magnitude
-#    greater than 1.5 times the initial guess, toss
+#    500 km or more greater than the initial guess, toss
 num_points   = data.shape[0]
 deleted_rows = 0;
 for counter in range(0,num_points):
   index  = counter - deleted_rows
   this_x0_est = data[index, 9]
   this_y0_est = data[index, 10]
-  if abs(this_x0_est) > abs(1.5*x0_guess[index]):
+  if abs(this_x0_est - x0_guess[index]) > 500:
     data = delete(data, index, axis=0)
     deleted_rows = deleted_rows + 1
-  elif abs(this_y0_est) > abs(1.5*y0_guess[index]):
+  elif abs(this_y0_est - y0_guess[index]) > 500:
     data = delete(data, s_[index], axis=0)
     deleted_rows = deleted_rows + 1
 print "Deleted %i outlier points." % deleted_rows
@@ -77,6 +79,7 @@ y0_est    = data[:,10] # r_y(0)     - final estimate
 xd0_est   = data[:,11] # r_x_dot(0) - final estimate
 yd0_est   = data[:,12] # r_y_dot(0) - final estimate
 
+
 #### Plot the dispersion of the initial state guesses
 fig = plt.gcf()
 plt.imshow(image, extent=[-r_Titan,r_Titan,-r_Titan,r_Titan])
@@ -88,6 +91,7 @@ plt.ylabel('y (km)', fontsize=16)
 plt.title('Dispersion of Initial State (Position) Guesses',
            fontsize=22)
 plt.axis('equal')
+plt.savefig("figure1_case" + str(test_case) + "_MC.png")
 plt.show()
 fig.clear()
 
@@ -101,6 +105,7 @@ plt.ylabel('y (km)', fontsize=16)
 plt.title('Dispersion of Initial State (Position) Estimates',
            fontsize=22)
 plt.axis('equal')
+plt.savefig("figure2_case" + str(test_case) + "_MC.png")
 plt.show()
 fig.clear()
 
@@ -112,7 +117,9 @@ plt.legend(shadow=True, fontsize=16, loc='upper left')
 plt.xlabel('x (km)', fontsize=16)
 plt.ylabel('y (km)', fontsize=16)
 plt.axis('equal')
+plt.savefig("figure3_case" + str(test_case) + "_MC.png")
 plt.show()
+fig.clear()
 
 #### Print out stats
 print "x(0)\ttruth: %.3f"  % X0_true[0],

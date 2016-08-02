@@ -17,7 +17,6 @@ function [] = main_MC(test_case, MC_runs)
 %
 
 % Constants chosen for this simulation
-
 G          = 6.6742e-11 / 1000**3;% km^3/kg*s^2, Univ. grav. constant
 m_Titan    = 1.3452e23;           % kg, mass of Titan
 mu         = G*m_Titan;           % km^3/s^2, Titan's grav. parameter
@@ -28,10 +27,18 @@ rad_mom    = 1500+rad_Titan;      % km
 deploy_v   = 2/1000;              % km/sec (deployment velocity)
 t0         = 0;                   % initial time
 dt         = 1;                   % seconds, time interval
-m          = 5000;                % try to make this many meas's
-noise_std  = 10;                  % standard deviation of noise
+m          = 10000;               % try to make this many meas's
 max_count  = 3;                   % Max # of iterations to allow
-m_NLS      = 800;                 % # of measurements for NLS
+m_NLS      = 1000;                % # of measurements for NLS
+
+% Standard deviation of noise
+if     test_case == 1
+  noise_std  = 10;
+elseif test_case == 2
+  noise_std  = 500;
+elseif test_case == 3
+  noise_std  = 10;
+end
 
 %-------------------------------------------------------------------%
 
@@ -110,8 +117,9 @@ if ~continue_flag
 end
 if continue_flag
   for index = 2:m_NLS
-    if time_meas(index) ~= (time_meas(index-1)+dt)
-      fprintf('Error: There is a gap in the first %i measurements.\n', m_NLS);
+    if (time_meas(index) - (time_meas(index-1)+dt)) > 1e-12
+      fprintf('Error: There is a gap in the first');
+      fprintf(' %i measurements.\n', m_NLS);
       continue_flag = 0;
     end
   end
@@ -124,7 +132,7 @@ end
 % Print out the common parameters
 disp('')
 fprintf('\tIterated extended Kalman filter for orbit determination');
-fprintf(', test case: %i\n\n', test_case)
+fprintf(', test case: %i - Monte Carlo analysis\n\n', test_case)
 fprintf('%i time points evaluated, %i measurements created', m, ...
         size(y_meas,1));
 fprintf(' (%.1f %%)\n', (size(y_meas,1)/m)*100);
@@ -133,10 +141,12 @@ fprintf('First %i of the total %i measurements to be used for NLS\n',
 fprintf('dt = %.3f seconds.\n',dt);
 fprintf('Std of noise specified to be: %.1f Hz\n',noise_std);
 fprintf('Number of iterations for NLS and EKF: %i\n', max_count);
-fprintf('Initial state of mothersat: [%7.1f %7.1f %7.3f %7.3f]\n',...
+fprintf('Initial state of mothersat: [%7.1f %7.1f %7.3f %7.3f]', ...
         X0_mom);
-fprintf('Initial state of femsat:    [%7.1f %7.1f %7.3f %7.3f]\n',...
+fprintf('  (truth)\n');
+fprintf('Initial state of femsat:    [%7.1f %7.1f %7.3f %7.3f]', ...
         X0_fem);
+fprintf('  (truth)\n');
 
 % Open file to store results from each run
 filename_string =strcat('MC_results_case',num2str(test_case),'.txt');
@@ -151,11 +161,14 @@ for counter = 1:MC_runs
   if test_case == 1
     guess_error = [randn; randn; .1*randn; .1*randn];
   elseif test_case == 2
-    guess_error = [randn; randn; randn; randn];
+    guess_error = [25*randn; 25*randn; 0.1*randn; 0.1*randn];
   elseif test_case == 3
     guess_error = [25*randn; 25*randn; 0.1*randn; 0.1*randn];
   end
   x0_guess = X0_fem + guess_error;
+
+  fprintf('\tx0_guess\t: %.3f %.3f %.3f %.3f\n', x0_guess(1), ...
+          x0_guess(2), x0_guess(3), x0_guess(4));
 
   % Initialize matrices and vectors
   n        = length(x0_guess);        % Number of states
@@ -170,11 +183,15 @@ for counter = 1:MC_runs
   y_meas(1:m_NLS), Phi0_vec, invR, max_count,                ...
   mom_states(1:m_NLS,:), freq, mu, rad_Titan);
 
+  fprintf('\tx_est_NLS\t: %.3f %.3f %.3f %.3f\n', x_est_NLS(1), x_est_NLS(2), x_est_NLS(3), x_est_NLS(4));
+
   % Use the resulting initial state guess from the NLS method to
   % initialize the EKF algorithm (uses all measurements).
   [x_estimate, fem_state_est_EKF] = iterated_EKF_orbit_det(time, ...
   x_est_NLS, meas_data, R, max_count, mom_states, freq, mu, ...
   rad_Titan);
+
+  fprintf('\tx_estimate\t: %.3f %.3f %.3f %.3f\n', x_estimate(1), x_estimate(2), x_estimate(3), x_estimate(4));
 
   % Save data for later processing.
   fprintf(file_id,'%i %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e\n', counter, x0_guess, x_est_NLS, x_estimate);

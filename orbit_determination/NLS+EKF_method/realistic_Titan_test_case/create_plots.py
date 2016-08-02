@@ -8,41 +8,55 @@
 from numpy import *
 import matplotlib.pyplot as plt
 import os
+import sys
+
+### Check that one argument was passed
+num_args = len(sys.argv)
+if num_args != 2:
+  print "Error in create_plots_MC.py:"
+  exit('  --> Provide argument of the test case ran: 1, 2, or 3')
+test_case = int(sys.argv[1])
 
 #### Read in data from file
-meas_data   = loadtxt('measurement_data.txt')  # time, y_true, y_meas
-states      = loadtxt('sat_states.txt')        # size m x 13. see [1]
+meas_data = loadtxt('measurement_data.txt',
+                    skiprows=1)              # time, y_true, y_meas
+states    = loadtxt('sat_states.txt')        # size m x 13. see [1]
+
+with open('measurement_data.txt', 'r') as f:
+    first_line = f.readline().rstrip()
+x0_guess = array(map(float, first_line.split()))
 
 #### General parameters/settings
 r_Titan = 2575.5  # km, radius of Titan
- # The full path to the image file must be specified for the function
- # get_sample_data, otherwise it assumes the path is relative to the
- # mpl-data/sample_data directory
+
+#### Needed to put image of Titan on figure
+# The full path to the image file must be specified for the function
+# get_sample_data, otherwise it assumes the path is relative to the
+# mpl-data/sample_data directory
 Titan_image_file = os.getcwd() + "/Titan_cropped.png"
 # Read in image and plot Titan
 image = plt.imread(Titan_image_file)
 
-#### Create plot of measurement data
+#################### Plot 1: measurement data #####################
 fig = plt.gcf()
 plt.plot(meas_data[:,0]/60.0, meas_data[:,2], 'o', 
          label='Measurements', alpha=0.6, markerfacecolor='blue',
          markeredgecolor='blue')
 plt.plot(meas_data[:,0]/60.0, meas_data[:,1], 'k-', label='Truth')
-plt.xlabel('Time (minutes)', fontsize=14)
-plt.ylabel('Doppler Shift (Hz)', fontsize=14)
+plt.xlabel('Time (minutes)',     fontsize=16)
+plt.ylabel('Doppler Shift (Hz)', fontsize=16)
 plt.title('Measurements Created for Simulation', fontsize=16)
-plt.legend(shadow=True, fontsize=14, loc='best')
-# plt.savefig("filename.png")
+plt.legend(shadow=True, fontsize=16, loc='best')
+plt.savefig("figure1_case" + str(test_case) + ".png")
 plt.show()
 fig.clear()
 
-#### Create plots of satellite positions (truth and estimates)
+#################### Plot 2: satellite positions #################
 fig = plt.gcf()
 # Add image of Titan
 plt.imshow(image, extent=[-r_Titan,r_Titan,-r_Titan,r_Titan])
-######################### add initial guess
-
-# Plot all points
+# TODO: Would be nice to add the initial guess to the figure, but
+#       that isn't contained in either file
 plt.plot(states[:,1], states[:,2], 'ko', label='Mothersat')
 plt.plot(states[:,5], states[:,6], 's', label='Femtosat (truth)',
          markerfacecolor='green', markeredgecolor='green')
@@ -52,19 +66,22 @@ plt.plot(states[:,9], states[:,10], 's',
 plt.legend(shadow=True, fontsize=14, loc='upper left')
 # Start and end points
 end = states.shape[0] - 1
-plt.text(states[0,1]-1500,   states[0,2]-1500,  "Start")
-plt.text(states[end,1]-1500, states[end,2]+500, "End")
-plt.text(states[0,9]+500,   states[0,10],  "Start")
-plt.text(states[end,9]+500, states[end,10], "End")
+plt.text(states[0,1]-1500,   states[0,2]-1500,  "Start", fontsize=14)
+plt.text(states[end,1]-1500, states[end,2]+500, "End",   fontsize=14)
+plt.text(states[0,9]+500,    states[0,10],      "Start", fontsize=14)
+plt.text(states[end,9]+500,  states[end,10],    "End",   fontsize=14)
 plt.axis('equal')
-plt.xlabel('x (km)', fontsize=14)
-plt.xlabel('y (km)', fontsize=14)
+plt.xlabel('x (km)', fontsize=16)
+plt.xlabel('y (km)', fontsize=16)
 plt.title('Estimated and True Femtosatellite Position', fontsize=16)
+plt.savefig("figure2_case" + str(test_case) + ".png")
 plt.show()
 fig.clear()
 
-#### Create plot showing when measurements are available
+#################### Plot 3: measurement availability ############
+# Add image of Titan
 plt.imshow(image, extent=[-r_Titan,r_Titan,-r_Titan,r_Titan])
+
 n = states.shape[0]
 time_meas = meas_data[:,0]
 
@@ -80,45 +97,99 @@ for index in arange(0,n,30):
   else:
     plt.plot(states[index,5], states[index,6], 's',
              markerfacecolor='red', markeredgecolor='red')
-plt.text(states[0,1],   states[0,2]-350, "Start", fontsize=14)
-plt.text(states[end,1]-100, states[end,2]-400, "End", fontsize=14)
-plt.text(states[0,9]+100,   states[0,10]-400, "Start", fontsize=14)
-plt.text(states[end,9]+100, states[end,10]-400, "End", fontsize=14)  
+plt.text(states[0,1],       states[0,2]-350,    "Start", fontsize=14)
+plt.text(states[end,1]-100, states[end,2]-400,  "End",   fontsize=14)
+plt.text(states[0,9]+100,   states[0,10]-400,   "Start", fontsize=14)
+plt.text(states[end,9]+100, states[end,10]-400, "End",   fontsize=14)
 plt.axis('equal')
-plt.xlabel('x (km)', fontsize=14)
-plt.xlabel('y (km)', fontsize=14)
-plt.title('Measurement Availability\nGreen = possible, Red = not possible due to signal blockage', fontsize=16)
+plt.xlabel('x (km)', fontsize=16)
+plt.xlabel('y (km)', fontsize=16)
+plt.title('Measurement Availability\nGreen = possible, Red = not possible due to signal blockage', fontsize=18)
+plt.savefig("figure3_case" + str(test_case) + ".png")
 plt.show()
 fig.clear()
 
-#### Create plot of femtosat position error (truth - estimate)
-x_resids = states[:,5] - states[:,9]
-y_resids = states[:,6] - states[:,10]
-resids   = (x_resids**2 + y_resids**2)**0.5
-plt.plot(states[:,0]/60.0, resids, 'k.')
+#################### Plots 4 & 5: femtosat position error ###########
+# Residual  = truth - estimate
+x_resids_KF = states[:,5] - states[:,9]
+y_resids_KF = states[:,6] - states[:,10]
+resids_KF   = (x_resids_KF**2 + x_resids_KF**2)**0.5
+plt.plot(states[:,0]/60.0, resids_KF, 'k.')
 plt.grid('on')
-plt.xlabel('Time (minutes)', fontsize=14)
-plt.ylabel('Error (km)', fontsize=14)
+plt.xlabel('Time (minutes)', fontsize=16)
+plt.ylabel('Error (km)',     fontsize=16)
 plt.title('Femtosatellite Position Estimate Error', fontsize=16)
+plt.savefig("figure4_case" + str(test_case) + ".png")
+plt.show()
+fig.clear()
+
+# Now we also want to see what the error would have been had we just
+# propagated the initial guess, without filtering any measurements.
+# So start by re-plotting the same KF estimate residuals.
+plt.plot(states[:,0]/60.0, resids_KF, 'k-', label='KF Residuals')
+plt.grid('on')
+plt.xlabel('Time (minutes)', fontsize=16)
+plt.ylabel('Error (km)',     fontsize=16)
+plt.title('Femtosatellite Position Estimate Error', fontsize=16)
+# Next, propagate the initial guess
+def Two_body_EOM(state, time):
+  G          = 6.6742e-11 / 1000**3;# km^3/kg*s^2, Univ grav constant
+  m_Titan    = 1.3452e23;           # kg, mass of Titan
+  mu         = G*m_Titan;           # km^3/s^2, Titan's grav. param
+  x          = state[0]
+  y          = state[1]
+  x_dot      = state[2]
+  y_dot      = state[3]
+
+  r_mag      = (x**2 + y**2)**0.5
+  r          = array([x, y])
+  r_ddot     = (-mu/r_mag**3)*r
+  x_ddot     = r_ddot[0]
+  y_ddot     = r_ddot[1]
+  d_state    = zeros((4))
+  d_state[0] = x_dot
+  d_state[1] = y_dot
+  d_state[2] = x_ddot
+  d_state[3] = y_ddot
+  return d_state
+from scipy.integrate import odeint
+time_array     = states[:,0]
+results        = odeint(Two_body_EOM, x0_guess, time_array)
+x_2body        = results[:,0]
+y_2body        = results[:,1]
+x_resids_2body = states[:,5] - x_2body
+y_resids_2body = states[:,6] - y_2body
+resids_2body   = (x_resids_2body**2 + y_resids_2body**2)**0.5
+initial_error  = ((x0_guess[0]-states[0,5])**2 + 
+                  (x0_guess[1]-states[0,6])**2)**0.5
+print "True initial position : %.3f" % states[0,5], " %.3f" % \
+      states[0,6]
+print "Initial position guess: %.3f" % x0_guess[0], " %.3f" % \
+      x0_guess[1]
+print "Initial guess error   : %.3f" % initial_error
+plt.plot(states[:,0]/60.0, resids_2body, 'r-', 
+         label='Guess Propagation Residuals')
+plt.legend(shadow=True, fontsize=14, loc='best')
+plt.savefig("figure5_case" + str(test_case) + ".png")
 plt.show()
 
-
+####################################################################
 
 # footnote [1]
 #   The columns of the array states will be, from left to right:
-#   1) time of the state
-#   2) r_x     of mothersat (truth)
-#   3) r_y     of mothersat (truth)
-#   4) r_x_dot of mothersat (truth)
-#   5) r_y_dot of mothersat (truth)
-#   6) r_x     of femsat    (truth)
-#   7) r_y     of femsat    (truth)
-#   8) r_x_dot of femsat    (truth)
-#   9) r_y_dot of femsat    (truth)
-#  10) r_x     of femsat    (estimate)
-#  11) r_y     of femsat    (estimate)
-#  12) r_x_dot of femsat    (estimate)
-#  13) r_y_dot of femsat    (estimate)
+#   1) time of the state           index: 0
+#   2) r_x     of mothersat (truth)       1
+#   3) r_y     of mothersat (truth)       2
+#   4) r_x_dot of mothersat (truth)       3
+#   5) r_y_dot of mothersat (truth)       4
+#   6) r_x     of femsat    (truth)       5
+#   7) r_y     of femsat    (truth)       6
+#   8) r_x_dot of femsat    (truth)       7
+#   9) r_y_dot of femsat    (truth)       8
+#  10) r_x     of femsat    (estimate)    9
+#  11) r_y     of femsat    (estimate)    10
+#  12) r_x_dot of femsat    (estimate)    11
+#  13) r_y_dot of femsat    (estimate)    12
 #
 # footnote [2]
 #   To plot a blue circle instead of Earth image, use:
