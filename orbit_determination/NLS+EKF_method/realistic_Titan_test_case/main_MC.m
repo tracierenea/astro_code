@@ -83,6 +83,7 @@ elseif test_case == 3
 end
 
 % Generate truth data
+m    = m+1;                          % b/c we'll delete first one
 tf   = t0 + (m-1)*dt;                % seconds, final time
 time = [t0:dt:tf]';                  % time vector for analysis
 [~, fem_states] = ode45(@two_body_EOM, time, X0_fem, mu);
@@ -159,7 +160,7 @@ for counter = 1:MC_runs
 
   % Add error to true initial state to get the guess
   if test_case == 1
-    guess_error = [randn; randn; .1*randn; .1*randn];
+    guess_error = [25*randn; 25*randn; 0.1*randn; 0.1*randn];
   elseif test_case == 2
     guess_error = [25*randn; 25*randn; 0.1*randn; 0.1*randn];
   elseif test_case == 3

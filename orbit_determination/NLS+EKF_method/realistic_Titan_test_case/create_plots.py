@@ -20,7 +20,7 @@ test_case = int(sys.argv[1])
 #### Read in data from file
 meas_data = loadtxt('measurement_data.txt',
                     skiprows=1)              # time, y_true, y_meas
-states    = loadtxt('sat_states.txt')        # size m x 13. see [1]
+states    = loadtxt('sat_states.txt')        # size m x 17. see [1]
 
 with open('measurement_data.txt', 'r') as f:
     first_line = f.readline().rstrip()
@@ -110,10 +110,10 @@ plt.show()
 fig.clear()
 
 #################### Plots 4 & 5: femtosat position error ###########
-# Residual  = truth - estimate
-x_resids_KF = states[:,5] - states[:,9]
-y_resids_KF = states[:,6] - states[:,10]
-resids_KF   = (x_resids_KF**2 + x_resids_KF**2)**0.5
+# Residual  = estimate - truth
+x_resids_KF = states[:,9]  - states[:,5]
+y_resids_KF = states[:,10] - states[:,6]
+resids_KF   = (x_resids_KF**2 + y_resids_KF**2)**0.5
 plt.plot(states[:,0]/60.0, resids_KF, 'k.')
 plt.grid('on')
 plt.xlabel('Time (minutes)', fontsize=16)
@@ -157,8 +157,8 @@ time_array     = states[:,0]
 results        = odeint(Two_body_EOM, x0_guess, time_array)
 x_2body        = results[:,0]
 y_2body        = results[:,1]
-x_resids_2body = states[:,5] - x_2body
-y_resids_2body = states[:,6] - y_2body
+x_resids_2body = x_2body - states[:,5]
+y_resids_2body = y_2body - states[:,6]
 resids_2body   = (x_resids_2body**2 + y_resids_2body**2)**0.5
 initial_error  = ((x0_guess[0]-states[0,5])**2 + 
                   (x0_guess[1]-states[0,6])**2)**0.5
@@ -172,7 +172,31 @@ plt.plot(states[:,0]/60.0, resids_2body, 'r-',
 plt.legend(shadow=True, fontsize=14, loc='best')
 plt.savefig("figure5_case" + str(test_case) + ".png")
 plt.show()
+fig.clear()
 
+#################### Plot 6: state error & 3sig bounds ###########
+# Error  = estimate - truth
+time_array = states[:,0]/60.0
+fig = plt.figure()
+ax1 = fig.add_subplot(211)
+x_KF_error = states[:,9]  - states[:,5]
+ax1.plot(time_array, x_KF_error, 'k-', label="x error")
+ax1.plot(time_array,  states[:,13], 'g--', label =  "P_xx forward")
+ax1.plot(time_array, -states[:,13], 'g--', label = "-P_xx forward")
+ax1.plot(time_array,  states[:,15], 'b--', label =  "P_xx backward")
+ax1.plot(time_array, -states[:,15], 'b--', label = "-P_xx backward")
+plt.legend(shadow=True, fontsize=14, loc='best')
+ax2 = fig.add_subplot(212)
+y_KF_error = states[:,10]  - states[:,6]
+ax2.plot(time_array, y_KF_error, 'k-', label="y error")
+ax2.plot(time_array,  states[:,14], 'g--', label =  "P_yy forward")
+ax2.plot(time_array, -states[:,14], 'g--', label = "-P_yy forward")
+ax2.plot(time_array,  states[:,16], 'b--', label =  "P_yy backward")
+ax2.plot(time_array, -states[:,16], 'b--', label = "-P_yy backward")
+plt.legend(shadow=True, fontsize=14, loc='best')
+plt.savefig("figure6_case" + str(test_case) + ".png")
+plt.show()
+fig.clear()
 ####################################################################
 
 # footnote [1]
@@ -190,6 +214,11 @@ plt.show()
 #  11) r_y     of femsat    (estimate)    10
 #  12) r_x_dot of femsat    (estimate)    11
 #  13) r_y_dot of femsat    (estimate)    12
+#  14) P_xx covariance, forward pass      13
+#  15) P_yy covariance, forward pass      14
+#  16) P_xx covariance, backwards pass    15
+#  17) P_yy covariance, backwards pass    16
+#
 #
 # footnote [2]
 #   To plot a blue circle instead of Earth image, use:

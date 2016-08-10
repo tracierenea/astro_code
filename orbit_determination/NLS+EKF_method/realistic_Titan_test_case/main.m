@@ -59,7 +59,7 @@ if test_case == 1
   y_dot0_fem  = sqrt(mu/rad_fem);    % km/sec (circular orbit)
   X0_fem      = [rad_fem; 0; -deploy_v; y_dot0_fem];
   % guess_error = [1; 1; .1; .1];      % add to true IC to get guess
-  guess_error = [randn; randn; .1*randn; .1*randn];
+  guess_error = [25*randn; 25*randn; .1*randn; .1*randn];
 elseif test_case == 2
   % Test 2: femsat already decayed in altitude, position on x-axis
   rad_fem     = 400 + rad_Titan;     % km
@@ -92,6 +92,7 @@ x0_true  = X0_fem;
 x0_guess = X0_fem + guess_error;
 
 % Generate truth data
+m        = m+1;                          % b/c we'll delete first one
 tf       = t0 + (m-1)*dt;                % seconds, final time
 time_vec = [t0:dt:tf]';                  % time vector for analysis
 [~, fem_states] = ode45(@two_body_EOM, time_vec, X0_fem, mu);
@@ -176,14 +177,15 @@ if continue_flag
   nonlinear_least_squares_orbit_det(time_vec(1:m_NLS), x0_guess, ...
   y_meas(1:m_NLS), Phi0_vec, invR, max_count,                    ...
   mom_states(1:m_NLS,:), freq, mu, rad_Titan);
+  
   fprintf('\nResult from NLS, to use as guess for EKF:')
   print_results(x0_true, x0_guess, x_est_NLS);
 
   % Step 2: Use the resulting initial state guess from the NLS method
   % to initialize the EKF algorithm (uses all measurements).
-  [x_estimate, fem_state_est_EKF] = iterated_EKF_orbit_det(   ...
-    time_vec, x_est_NLS, meas_data, R, max_count, mom_states, ...
-    freq, mu, rad_Titan);
+  [x_estimate, fem_state_est_EKF, P_for, P_back] =               ...
+  iterated_EKF_orbit_det(time_vec, x_est_NLS, meas_data, R,      ...
+  max_count, mom_states, freq, mu, rad_Titan);
 
   % Print final results
   fprintf('Results from EKF:')
@@ -199,13 +201,17 @@ if continue_flag
   end
 
   file_id = fopen('sat_states.txt','w');
-  data_out          = zeros(m,13);
+  data_out          = zeros(m,17);
   data_out(:,1)     = time_vec';            % time of states
   data_out(:,2:5)   = mom_states;           % truth
   data_out(:,6:9)   = fem_states;           % truth
   data_out(:,10:13) = fem_state_est_EKF;    % estimate of fem state
+  data_out(:,14)    = P_for(:, 1);          % P_xx covariance forward
+  data_out(:,15)    = P_for(:, 4);          % P_yy covariance forward
+  data_out(:,16)    = P_back(:,1);          % P_xx covariance backw.
+  data_out(:,17)    = P_back(:,4);          % P_yy covariance backw.
   for ii = 1:m
-    fprintf(file_id,'%.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e\n', data_out(ii,:));
+    fprintf(file_id,'%.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e\n', data_out(ii,:));
   end
   status = fclose("all");
 else

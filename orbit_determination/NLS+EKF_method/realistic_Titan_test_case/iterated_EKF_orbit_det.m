@@ -1,4 +1,4 @@
-function [x_hat, fem_states] = iterated_EKF_orbit_det(time, x0_guess, meas_data, R, max_count, mom_states, freq, mu, rad_planet)
+function [x_hat, fem_states, P_f, P_b] = iterated_EKF_orbit_det(time, x0_guess, meas_data, R, max_count, mom_states, freq, mu, rad_planet)
 %ITERATED_EKF_ORBIT_DET Use extended Kalman filter to find IC
 %   This is an implementation of the algorithm described in:
 %   Optimal Estimation of Dynamic Systems, 2nd Edition
@@ -191,8 +191,10 @@ end % main loop
 state_estimates_backwards(1,:) = state_estimates_forwards(1,:);
 
 % Return results
-x_hat = x_est;
+x_hat      = x_est;
 fem_states = state_estimates_backwards;
+P_f        = P_estimates_forwards;
+P_b        = P_estimates_backwards;
 
 
 % Footnote [1]
