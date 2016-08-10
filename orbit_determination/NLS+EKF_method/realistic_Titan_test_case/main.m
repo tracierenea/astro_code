@@ -58,14 +58,12 @@ if test_case == 1
   rad_fem     = rad_mom;
   y_dot0_fem  = sqrt(mu/rad_fem);    % km/sec (circular orbit)
   X0_fem      = [rad_fem; 0; -deploy_v; y_dot0_fem];
-  % guess_error = [1; 1; .1; .1];      % add to true IC to get guess
   guess_error = [25*randn; 25*randn; .1*randn; .1*randn];
 elseif test_case == 2
   % Test 2: femsat already decayed in altitude, position on x-axis
   rad_fem     = 400 + rad_Titan;     % km
   y_dot0_fem  = sqrt(mu/rad_fem);    % km/sec (circular orbit)
   X0_fem      = [rad_fem; 0; 0; y_dot0_fem];
-  % guess_error = [50; 50; .1; .1];    % add to true IC to get guess
   guess_error = [25*randn; 25*randn; 0.1*randn; 0.1*randn];
 elseif test_case == 3
   % Test 3: mom at 30 degrees and fem at 60 degrees off of x-axis
@@ -82,7 +80,6 @@ elseif test_case == 3
                   rad_mom*sind(30);
                  -vel_mom*cosd(60);
                   vel_mom*sind(60)];
-  % guess_error = [150; 150; 0.5; 0.5];   % add to true IC to get guess
   guess_error = [25*randn; 25*randn; 0.1*randn; 0.1*randn];
 
 end
