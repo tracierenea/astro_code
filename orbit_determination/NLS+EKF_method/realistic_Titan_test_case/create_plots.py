@@ -174,7 +174,23 @@ plt.savefig("figure5_case" + str(test_case) + ".png")
 plt.show()
 fig.clear()
 
-#################### Plot 6: state error & 3sig bounds ###########
+#################### Plot 6: femtosat velocity error ###########
+# Residual  = estimate - truth
+x_dot_resids_KF = states[:,11] - states[:,7]
+y_dot_resids_KF = states[:,12] - states[:,8]
+vel_resids_KF   = (x_dot_resids_KF**2 + y_dot_resids_KF**2)**0.5
+plt.plot(states[:,0]/60.0, vel_resids_KF, 'k.')
+plt.grid('on')
+plt.xlabel('Time (minutes)', fontsize=16)
+plt.ylabel('Error (km/sec)',     fontsize=16)
+plt.title('Femtosatellite Velocity Estimate Error', fontsize=18)
+plt.savefig("figure6_case" + str(test_case) + ".png")
+plt.show()
+fig.clear()
+
+
+
+#################### Plot 7: state error & 3sig bounds ###########
 # Error  = estimate - truth
 time_array = states[:,0]/60.0
 fig = plt.figure()
@@ -194,7 +210,7 @@ ax2.plot(time_array, -states[:,14], 'g--', label = "-P_yy forward")
 ax2.plot(time_array,  states[:,16], 'b--', label =  "P_yy backward")
 ax2.plot(time_array, -states[:,16], 'b--', label = "-P_yy backward")
 plt.legend(shadow=True, fontsize=14, loc='best')
-plt.savefig("figure6_case" + str(test_case) + ".png")
+plt.savefig("figure7_case" + str(test_case) + ".png")
 plt.show()
 fig.clear()
 ####################################################################
