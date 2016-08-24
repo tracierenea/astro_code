@@ -20,11 +20,16 @@ test_case = int(sys.argv[1])
 #### Read in data from file
 meas_data = loadtxt('measurement_data.txt',
                     skiprows=1)              # time, y_true, y_meas
-states    = loadtxt('sat_states.txt')        # size m x 17. see [1]
+states    = loadtxt('sat_states.txt',
+                    skiprows=1)              # size m x 17. see [1]
 
 with open('measurement_data.txt', 'r') as f:
     first_line = f.readline().rstrip()
 x0_guess = array(map(float, first_line.split()))
+
+with open('sat_states.txt', 'r') as f:
+    first_line = f.readline().rstrip()
+x0_fem_truth = array(map(float, first_line.split()))
 
 #### General parameters/settings
 r_Titan = 2575.5  # km, radius of Titan
@@ -160,10 +165,10 @@ y_2body        = results[:,1]
 x_resids_2body = x_2body - states[:,5]
 y_resids_2body = y_2body - states[:,6]
 resids_2body   = (x_resids_2body**2 + y_resids_2body**2)**0.5
-initial_error  = ((x0_guess[0]-states[0,5])**2 + 
-                  (x0_guess[1]-states[0,6])**2)**0.5
-print "True initial position : %.3f" % states[0,5], " %.3f" % \
-      states[0,6]
+initial_error  = ((x0_guess[0]-x0_fem_truth[0])**2 +
+                  (x0_guess[1]-x0_fem_truth[1])**2)**0.5
+print "True initial position : %.3f" % x0_fem_truth[0], " %.3f" % \
+      x0_fem_truth[1]
 print "Initial position guess: %.3f" % x0_guess[0], " %.3f" % \
       x0_guess[1]
 print "Initial guess error   : %.3f" % initial_error
@@ -187,8 +192,6 @@ plt.title('Femtosatellite Velocity Estimate Error', fontsize=18)
 plt.savefig("figure6_case" + str(test_case) + ".png")
 plt.show()
 fig.clear()
-
-
 
 #################### Plot 7: state error & 3sig bounds ###########
 # Error  = estimate - truth

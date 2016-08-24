@@ -191,13 +191,15 @@ if continue_flag
   % Save data for later plotting. (I prefer using python's matplotlib
   % to octave's gnuplot.)
   file_id = fopen('measurement_data.txt', 'w');
-  fprintf(file_id,'%.6e %.6e %.6e %.6e\n',x0_guess);
+  fprintf(file_id,'%.6e %.6e %.6e %.6e\n', x0_guess);
   for ii = 1:size(meas_data,1)
     fprintf(file_id,'%.6e %.6e %.6e\n',time_meas(ii), y_true(ii), ...
                                        y_meas(ii));
   end
 
   file_id = fopen('sat_states.txt','w');
+  % first line is true initial state at time 0
+  fprintf(file_id,'%.6e %.6e %.6e %.6e\n', x0_true);
   data_out          = zeros(m,17);
   data_out(:,1)     = time_vec';            % time of states
   data_out(:,2:5)   = mom_states;           % truth
