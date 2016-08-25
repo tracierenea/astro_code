@@ -33,19 +33,24 @@ for ii = 1:m
   r_dot       =  [fem_states(ii,3); fem_states(ii,4)];
   R_dot       =  [mom_states(ii,3); mom_states(ii,4)];
   rho_dot_mag =  get_rho_dot_mag(r,r_dot,R,R_dot);
-  angle_mom   =  atan2(y_mom, x_mom);
-  angle_fem   =  atan2(y_fem, x_fem);
-  angle_test  =  acos(radius_planet/R);
-  max_angle   =  angle_mom + angle_test;
-  min_angle   =  angle_mom - angle_test;
+  
+  % If not testing for obstruction, just write out the measurement
+  if !flag_for_test
+    y(meas_index, :) = [time(ii) -rho_dot_mag/lamda]; % Dopp. shift
+    meas_index       = meas_index + 1;
+  else
+    % Here, we need to test for line-of-sight. There's a two-part
+    % test. Also, we need to take care of the case when the two sats
+    % have the same y-value in the coordinate system.
+    angle_mom   =  atan2(y_mom, x_mom);
+    angle_fem   =  atan2(y_fem, x_fem);
+    angle_test  =  acos(radius_planet/R);
+    max_angle   =  angle_mom + angle_test;
+    min_angle   =  angle_mom - angle_test;
+    slope       =  (y_fem-y_mom)/(x_fem-x_mom);
 
-  % Here, we need to test for line-of-sight. There's a two-part test.
-  % Also, we need to take care of the case when the two sats have the
-  % same y-value in the coordinate system.
-  slope  =  (y_fem-y_mom)/(x_fem-x_mom);
-  if slope == 0
-    % The sats have the same y-value on the coordinate frame.
-    if flag_for_test
+    if slope < eps
+      % The sats have the same y-value on the coordinate frame.
       % Use the angle test
       if (angle_fem < max_angle && angle_fem > min_angle)
         % If they can see each other, write out measurement
@@ -53,30 +58,21 @@ for ii = 1:m
         meas_index       = meas_index + 1;
       end % angle test
     else
-      % no test for obstruction, write out measurement
-      y(meas_index, :) = [time(ii) -rho_dot_mag/lamda]; % Dopp. shift
-      meas_index       = meas_index + 1;      
-    end % if (flag_for_test) && (abs(y_fem) > radius_planet)
-  else
-    b            =  y_fem - slope*x_fem;
-    slope_perpen = -1/slope;
-    x_intersect  =  b/(slope_perpen - slope);
-    y_intersect  =  slope*x_intersect + b;
-    rad_perp     =  norm([x_intersect y_intersect]);
+      b            =  y_fem - slope*x_fem;
+      slope_perpen = -1/slope;
+      x_intersect  =  b/(slope_perpen - slope);
+      y_intersect  =  slope*x_intersect + b;
+      rad_perp     =  norm([x_intersect y_intersect]);
 
-    if flag_for_test
       if (angle_fem < max_angle && angle_fem > min_angle) || ...
          (rad_perp > radius_planet)
+
         % line-of-sight not obstructed by planetary body   
         y(meas_index, :) = [time(ii) -rho_dot_mag/lamda];
         meas_index       = meas_index + 1;
       end
-    else
-      % write all measurements out
-      y(meas_index, :) = [time(ii) -rho_dot_mag/lamda]; % Dopp. shift
-      meas_index       = meas_index + 1;
-    end % if flag_for_test
-  end % if slope == 0
+    end % if slope < eps
+  end % if !flag_for_test
 end % for ii = 1:m
 
 % [1] Reason for conditional test:
