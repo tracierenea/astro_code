@@ -30,6 +30,7 @@ dt         = 1;                   % seconds, time interval
 m          = 10000;               % try to make this many meas's
 max_count  = 3;                   % Max # of iterations to allow
 m_NLS      = 1000;                % meas's for NLS
+error_vec  = [25; 25; 0.1; 0.1];
 
 % Standard deviation of noise
 if     test_case == 1
@@ -39,6 +40,9 @@ elseif test_case == 2
 elseif test_case == 3
   noise_std  = 10;
 end
+
+guess_error = error_vec.*[randn; randn; randn; randn];
+
 %-------------------------------------------------------------------%
 
 % Octave package odepkg must be installed and loaded here
@@ -46,6 +50,9 @@ pkg load odepkg
 
 % Ignore time stamps for all function files, this improves speed
 ignore_function_time_stamp = "all";
+
+% If there are warnings, find out which functions generated them
+debug_on_warning (true);
 
 % Initial state for mothersat
 y_dot0_mom = sqrt(mu/rad_mom);      % km/sec (circular orbit)
@@ -58,13 +65,11 @@ if test_case == 1
   rad_fem     = rad_mom;
   y_dot0_fem  = sqrt(mu/rad_fem);    % km/sec (circular orbit)
   X0_fem      = [rad_fem; 0; -deploy_v; y_dot0_fem];
-  guess_error = [25*randn; 25*randn; .1*randn; .1*randn];
 elseif test_case == 2
   % Test 2: femsat already decayed in altitude, position on x-axis
   rad_fem     = 400 + rad_Titan;     % km
   y_dot0_fem  = sqrt(mu/rad_fem);    % km/sec (circular orbit)
   X0_fem      = [rad_fem; 0; 0; y_dot0_fem];
-  guess_error = [25*randn; 25*randn; 0.1*randn; 0.1*randn];
 elseif test_case == 3
   % Test 3: mom at 30 degrees and fem at 60 degrees off of x-axis
   % (not including the deployment velocity component)
@@ -80,8 +85,6 @@ elseif test_case == 3
                   rad_mom*sind(30);
                  -vel_mom*cosd(60);
                   vel_mom*sind(60)];
-  guess_error = [25*randn; 25*randn; 0.1*randn; 0.1*randn];
-
 end
 
 % Initial state guess: [r_x r_y r_x_dot r_y_dot]'
@@ -128,7 +131,7 @@ fprintf('%i time points evaluated, %i measurements created', m, ...
 fprintf(' (%.1f %%)\n', (size(y_meas,1)/m)*100);
 fprintf('First %i of the total %i measurements to be used for NLS\n',
         m_NLS, size(y_meas,1));
-fprintf('dt = %.3f seconds.\n',dt);
+fprintf('dt = %.2f seconds.\n',dt);
 fprintf('Std of noise specified to be: %.1f Hz\n',noise_std);
 fprintf('Number of iterations for NLS and EKF: %i\n\n', max_count);
 fprintf('Initial state of mothersat: [%7.1f %7.1f %7.3f %7.3f]', ...
@@ -180,13 +183,9 @@ if continue_flag
 
   % Step 2: Use the resulting initial state guess from the NLS method
   % to initialize the EKF algorithm (uses all measurements).
-  [x_estimate, fem_state_est_EKF, P_for, P_back] =               ...
-  iterated_EKF_orbit_det(time_vec, x_est_NLS, meas_data, R,      ...
-  max_count, mom_states, freq, mu, rad_Titan);
+  [fem_state_est_EKF, P_for] =  iterated_EKF_orbit_det_forward_only(time_vec, x_est_NLS, meas_data, R, max_count, mom_states, freq, mu, rad_Titan, error_vec);
 
-  % Print final results
-  fprintf('Results from EKF:')
-  print_results(x0_true, x_est_NLS, x_estimate);
+  fprintf('\nForward only process done. (No estimate result.)\n');
 
   % Save data for later plotting. (I prefer using python's matplotlib
   % to octave's gnuplot.)
@@ -197,7 +196,7 @@ if continue_flag
                                        y_meas(ii));
   end
 
-  file_id = fopen('sat_states.txt','w');
+  file_id = fopen('sat_states_F.txt','w');
   % first line is true initial state at time 0
   fprintf(file_id,'%.6e %.6e %.6e %.6e\n', x0_true);
   data_out          = zeros(m,17);
@@ -205,12 +204,47 @@ if continue_flag
   data_out(:,2:5)   = mom_states;           % truth
   data_out(:,6:9)   = fem_states;           % truth
   data_out(:,10:13) = fem_state_est_EKF;    % estimate of fem state
-  data_out(:,14)    = P_for(:, 1);          % P_xx covariance forward
-  data_out(:,15)    = P_for(:, 4);          % P_yy covariance forward
-  data_out(:,16)    = P_back(:,1);          % P_xx covariance backw.
-  data_out(:,17)    = P_back(:,4);          % P_yy covariance backw.
+  data_out(:,14)    = P_for(:, 1);          % P_11 error covariance
+  data_out(:,15)    = P_for(:, 2);          % P_22 error covariance
+  data_out(:,16)    = P_for(:, 3);          % P_33 error covariance
+  data_out(:,17)    = P_for(:, 4);          % P_44 error covariance
+
   for ii = 1:m
-    fprintf(file_id,'%.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e\n', data_out(ii,:));
+    fprintf(file_id,'%.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e \n', data_out(ii,:));
+  end
+  status = fclose("all");
+
+  %%%%%%%%%%%%%%%%%%%
+
+  % Here I've left the forward-backward function in place so we can 
+  % compare the results.
+  [x_estimate, fem_state_est_EKF, P_for, P_back] =               ...
+  iterated_EKF_orbit_det(time_vec, x_est_NLS,       ...
+  meas_data, R, max_count, mom_states, freq, mu, rad_Titan,      ...
+  error_vec);
+
+  fprintf('Results from F-B EKF:')
+  print_results(x0_true, x_est_NLS, x_estimate);
+
+  file_id = fopen('sat_states_FB.txt','w');
+  % first line is true initial state at time 0
+  fprintf(file_id,'%.6e %.6e %.6e %.6e\n', x0_true);
+  data_out          = zeros(m,17);
+  data_out(:,1)     = time_vec';            % time of states
+  data_out(:,2:5)   = mom_states;           % truth
+  data_out(:,6:9)   = fem_states;           % truth
+  data_out(:,10:13) = fem_state_est_EKF;    % estimate of fem state
+  data_out(:,14)    = P_for(:, 1);          % P_11 error covariance
+  data_out(:,15)    = P_for(:, 2);          % P_22 error covariance
+  data_out(:,16)    = P_for(:, 3);          % P_33 error covariance
+  data_out(:,17)    = P_for(:, 4);          % P_44 error covariance
+  data_out(:,18)    = P_back(:, 1);         % P_11 error covariance
+  data_out(:,19)    = P_back(:, 2);         % P_22 error covariance
+  data_out(:,20)    = P_back(:, 3);         % P_33 error covariance
+  data_out(:,21)    = P_back(:, 4);         % P_44 error covariance  
+
+  for ii = 1:m
+    fprintf(file_id,'%.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e\n', data_out(ii,:));
   end
   status = fclose("all");
 else

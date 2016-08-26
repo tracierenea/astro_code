@@ -13,21 +13,23 @@ import sys
 ### Check that one argument was passed
 num_args = len(sys.argv)
 if num_args != 2:
-  print "Error in create_plots_MC.py:"
+  print "Error in create_plots.py:"
   exit('  --> Provide argument of the test case ran: 1, 2, or 3')
 test_case = int(sys.argv[1])
 
-#### Read in data from file
+#### Read in data from file. F denotes the forward-only KF results;
+#### FB denotes the forward-backwards results.
 meas_data = loadtxt('measurement_data.txt',
                     skiprows=1)              # time, y_true, y_meas
-states    = loadtxt('sat_states.txt',
+states_F  = loadtxt('sat_states_F.txt',
                     skiprows=1)              # size m x 17. see [1]
-
+states_FB = loadtxt('sat_states_FB.txt',
+                    skiprows=1)              # size m x 17. see [1])
 with open('measurement_data.txt', 'r') as f:
     first_line = f.readline().rstrip()
 x0_guess = array(map(float, first_line.split()))
 
-with open('sat_states.txt', 'r') as f:
+with open('sat_states_F.txt', 'r') as f:     #### same in both cases?
     first_line = f.readline().rstrip()
 x0_fem_truth = array(map(float, first_line.split()))
 
@@ -57,8 +59,12 @@ plt.show()
 fig.clear()
 
 #################### Plot 2: satellite positions #################
-fig = plt.gcf()
+# For this plot, we'll let the states be the forward-only process
+# results.
+states = states_F
+
 # Add image of Titan
+fig = plt.gcf()
 plt.imshow(image, extent=[-r_Titan,r_Titan,-r_Titan,r_Titan])
 # TODO: Would be nice to add the initial guess to the figure, but
 #       that isn't contained in either file
@@ -84,6 +90,10 @@ plt.show()
 fig.clear()
 
 #################### Plot 3: measurement availability ############
+# For this plot, we'll let the states be the forward-only process
+# results.
+states = states_F
+
 # Add image of Titan
 plt.imshow(image, extent=[-r_Titan,r_Titan,-r_Titan,r_Titan])
 
@@ -115,15 +125,32 @@ plt.show()
 fig.clear()
 
 #################### Plots 4 & 5: femtosat position error ###########
+
+# For this plot, we're going to compare residuals from both the
+# forward-only and forward-backwards KF methods.
+
+x_est_F  = states_F[:,9]
+y_est_F  = states_F[:,10]
+x_est_FB = states_FB[:,9]
+y_est_FB = states_FB[:,10]
+x_truth  = states_F[:,5] # could use F or FB; they're the same
+y_truth  = states_F[:,6]
+
 # Residual  = estimate - truth
-x_resids_KF = states[:,9]  - states[:,5]
-y_resids_KF = states[:,10] - states[:,6]
-resids_KF   = (x_resids_KF**2 + y_resids_KF**2)**0.5
-plt.plot(states[:,0]/60.0, resids_KF, 'k.')
+x_resids_F = x_est_F - x_truth
+y_resids_F = y_est_F - y_truth
+resids_F   = (x_resids_F**2 + y_resids_F**2)**0.5
+x_resids_FB = x_est_FB - x_truth
+y_resids_FB = y_est_FB - y_truth
+resids_FB   = (x_resids_FB**2 + y_resids_FB**2)**0.5
+
+plt.plot(states[:,0]/60.0, resids_F,  'k.', label="Forward")
+plt.plot(states[:,0]/60.0, resids_FB, 'r.', label="Forward-Backward")
 plt.grid('on')
 plt.xlabel('Time (minutes)', fontsize=16)
 plt.ylabel('Error (km)',     fontsize=16)
 plt.title('Femtosatellite Position Estimate Error', fontsize=16)
+plt.legend(shadow=True, fontsize=14, loc='best')
 plt.savefig("figure4_case" + str(test_case) + ".png")
 plt.show()
 fig.clear()
@@ -131,7 +158,7 @@ fig.clear()
 # Now we also want to see what the error would have been had we just
 # propagated the initial guess, without filtering any measurements.
 # So start by re-plotting the same KF estimate residuals.
-plt.plot(states[:,0]/60.0, resids_KF, 'k-', label='KF Residuals')
+plt.plot(states[:,0]/60.0, resids_F, 'k-', label='KF Residuals')
 plt.grid('on')
 plt.xlabel('Time (minutes)', fontsize=16)
 plt.ylabel('Error (km)',     fontsize=16)
@@ -180,42 +207,99 @@ plt.show()
 fig.clear()
 
 #################### Plot 6: femtosat velocity error ###########
+
+xdot_est_F  = states_F[:,11]
+ydot_est_F  = states_F[:,12]
+xdot_est_FB = states_FB[:,11]
+ydot_est_FB = states_FB[:,12]
+xdot_truth  = states_F[:,7]     # could use F or FB; they're the same
+ydot_truth  = states_F[:,8]
+
 # Residual  = estimate - truth
-x_dot_resids_KF = states[:,11] - states[:,7]
-y_dot_resids_KF = states[:,12] - states[:,8]
-vel_resids_KF   = (x_dot_resids_KF**2 + y_dot_resids_KF**2)**0.5
-plt.plot(states[:,0]/60.0, vel_resids_KF, 'k.')
+xdot_resids_F = xdot_est_F - xdot_truth
+ydot_resids_F = ydot_est_F - ydot_truth
+resids_F      = (xdot_resids_F**2 + ydot_resids_F**2)**0.5
+x_resids_FB   = xdot_est_FB - xdot_truth
+y_resids_FB   = ydot_est_FB - ydot_truth
+resids_FB     = (x_resids_FB**2 + y_resids_FB**2)**0.5
+
+plt.plot(states[:,0]/60.0, resids_F,  'k.', label="Forward")
+plt.plot(states[:,0]/60.0, resids_FB, 'r.', label="Forward-Backward")
 plt.grid('on')
 plt.xlabel('Time (minutes)', fontsize=16)
 plt.ylabel('Error (km/sec)',     fontsize=16)
 plt.title('Femtosatellite Velocity Estimate Error', fontsize=18)
+plt.legend(shadow=True, fontsize=14, loc='best')
 plt.savefig("figure6_case" + str(test_case) + ".png")
 plt.show()
 fig.clear()
 
 #################### Plot 7: state error & 3sig bounds ###########
+
+# For this plot, we'll let the states be the forward-only process
+# results.
+states = states_F
+
 # Error  = estimate - truth
 time_array = states[:,0]/60.0
 fig = plt.figure()
 ax1 = fig.add_subplot(211)
+
+# 3*sigma bounds
+Three_sig_11_F  = 3*(states[:,13])**0.5;
+Three_sig_22_F  = 3*(states[:,14])**0.5;
+
 x_KF_error = states[:,9]  - states[:,5]
-ax1.plot(time_array, x_KF_error, 'k-', label="x error")
-ax1.plot(time_array,  states[:,13], 'g--', label =  "P_xx forward")
-ax1.plot(time_array, -states[:,13], 'g--', label = "-P_xx forward")
-ax1.plot(time_array,  states[:,15], 'b--', label =  "P_xx backward")
-ax1.plot(time_array, -states[:,15], 'b--', label = "-P_xx backward")
+ax1.plot(time_array, x_KF_error,     'k-',  label ="x error")
+ax1.plot(time_array, Three_sig_11_F, 'g--', label ="P_11 forward")
+ax1.plot(time_array,-Three_sig_11_F, 'g--', label ="-P_11 forward")
+plt.title('Position Error and 3sigma Bounds: Forward Only', fontsize=18)
 plt.legend(shadow=True, fontsize=14, loc='best')
 ax2 = fig.add_subplot(212)
 y_KF_error = states[:,10]  - states[:,6]
 ax2.plot(time_array, y_KF_error, 'k-', label="y error")
-ax2.plot(time_array,  states[:,14], 'g--', label =  "P_yy forward")
-ax2.plot(time_array, -states[:,14], 'g--', label = "-P_yy forward")
-ax2.plot(time_array,  states[:,16], 'b--', label =  "P_yy backward")
-ax2.plot(time_array, -states[:,16], 'b--', label = "-P_yy backward")
+ax2.plot(time_array, Three_sig_22_F, 'g--', label ="P_22 forward")
+ax2.plot(time_array,-Three_sig_22_F, 'g--', label ="-P_22 forward")
 plt.legend(shadow=True, fontsize=14, loc='best')
 plt.savefig("figure7_case" + str(test_case) + ".png")
 plt.show()
 fig.clear()
+
+#################### Plot 8: state error & 3sig bounds ###########
+
+# For this plot, we'll let the states be the forward-backward process
+# results.
+states = states_FB
+
+# Error  = estimate - truth
+time_array = states[:,0]/60.0
+fig = plt.figure()
+ax1 = fig.add_subplot(211)
+
+# 3*sigma bounds
+Three_sig_11_FBf  = 3*(states[:,13])**0.5;
+Three_sig_22_FBf  = 3*(states[:,14])**0.5;
+Three_sig_11_FBb  = 3*(states[:,17])**0.5;
+Three_sig_22_FBb  = 3*(states[:,18])**0.5;
+x_KF_error = states[:,9]  - states[:,5]
+ax1.plot(time_array,  x_KF_error, 'k-', label="x error")
+ax1.plot(time_array,  Three_sig_11_FBf,'g--',label =  "P_11 forward")
+ax1.plot(time_array, -Three_sig_11_FBf,'g--',label = "-P_11 forward")
+ax1.plot(time_array,  Three_sig_11_FBb,'b--',label = "P_11 backward")
+ax1.plot(time_array, -Three_sig_11_FBb,'b--',label ="-P_11 backward")
+plt.title('Position Error and 3sigma Bounds: Forward-Backward', fontsize=18)
+ax2 = fig.add_subplot(212)
+y_KF_error = states[:,10]  - states[:,6]
+ax2.plot(time_array, y_KF_error, 'k-', label="y error")
+ax2.plot(time_array,  Three_sig_22_FBf,'g--',label =  "P_22 forward")
+ax2.plot(time_array, -Three_sig_22_FBf,'g--',label = "-P_22 forward")
+ax2.plot(time_array,  Three_sig_22_FBb,'b--',label = "P_22 backward")
+ax2.plot(time_array, -Three_sig_22_FBb,'b--',label ="-P_22 backward")
+plt.legend(shadow=True, fontsize=14, loc='best')
+plt.savefig("figure8_case" + str(test_case) + ".png")
+plt.show()
+fig.clear()
+
 ####################################################################
 
 # footnote [1]
@@ -233,11 +317,15 @@ fig.clear()
 #  11) r_y     of femsat    (estimate)    10
 #  12) r_x_dot of femsat    (estimate)    11
 #  13) r_y_dot of femsat    (estimate)    12
-#  14) P_xx covariance, forward pass      13
-#  15) P_yy covariance, forward pass      14
-#  16) P_xx covariance, backwards pass    15
-#  17) P_yy covariance, backwards pass    16
-#
+#  14) P_11 error covariance              13
+#  15) P_22 error covariance              14
+#  16) P_33 error covariance              15
+#  17) P_44 error covariance              16
+# ** if the forward-backward process file, continue with... **
+#  18) P_11 error covariance, back pass   17
+#  19) P_22 error covariance, back pass   18
+#  20) P_33 error covariance, back pass   19
+#  21) P_44 error covariance, back pass   20
 #
 # footnote [2]
 #   To plot a blue circle instead of Earth image, use:

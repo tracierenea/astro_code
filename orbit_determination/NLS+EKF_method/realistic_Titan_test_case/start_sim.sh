@@ -47,9 +47,10 @@ echo "  > octave --silent --eval main($1)"
 octave --silent --eval "main($1)"
 
 # Create plots using python script.
-if [ -f "$file1" ] && [ -f "$file2" ];
-then
-  python create_plots.py  $1;
-else
-  echo -e "\nNo data. Skipping plots.\n"
-fi
+python create_plots.py  $1;
+# if [ -f "$file1" ] && [ -f "$file2" ];
+# then
+#   python create_plots.py  $1;
+# else
+#   echo -e "\nNo data. Skipping plots.\n"
+# fi

@@ -21,12 +21,15 @@ function [x_hat, fem_states, P_f, P_b] = iterated_EKF_orbit_det(time, x0_guess, 
 %     max_count     : max # of iterations to allow
 %     mom_states    : matrix of the mothersatellite's states
 %     freq          : transmission frequency
-%     mu            : gravitational parameter of body being orbitted
-%     rad_planet    : radius of the planetary body being orbitted
+%     mu            : gravitational parameter of body being orbited
+%     rad_planet    : radius of the planetary body being orbited
 %     error_vec     : used to define initial state guess in main.m
 %
-%   Output:
-%     y             : 2-column matrix, [time measurements]
+%   Outputs:
+%     x_hat         : estimate of initial femtosat state
+%     fem_states    : matrix of femtosat state estimates
+%     P_f           : error covariances from last forward pass
+%     P_b           : error covariances from last backward pass
 %
 
 clear indices

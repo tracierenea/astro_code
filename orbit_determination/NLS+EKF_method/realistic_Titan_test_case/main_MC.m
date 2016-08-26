@@ -30,6 +30,7 @@ dt         = 1;                   % seconds, time interval
 m          = 10000;               % try to make this many meas's
 max_count  = 3;                   % Max # of iterations to allow
 m_NLS      = 1000;                % # of measurements for NLS
+error_vec  = [25; 25; 0.1; 0.1];
 
 % Standard deviation of noise
 if     test_case == 1
@@ -159,13 +160,8 @@ for counter = 1:MC_runs
   fprintf('MC run: %i of %i\n', counter, MC_runs);
 
   % Add error to true initial state to get the guess
-  if test_case == 1
-    guess_error = [25*randn; 25*randn; 0.1*randn; 0.1*randn];
-  elseif test_case == 2
-    guess_error = [25*randn; 25*randn; 0.1*randn; 0.1*randn];
-  elseif test_case == 3
-    guess_error = [25*randn; 25*randn; 0.1*randn; 0.1*randn];
-  end
+
+  guess_error = error_vec.*[randn; randn; randn; randn]
   x0_guess = X0_fem + guess_error;
 
   fprintf('\tx0_guess\t: %.3f %.3f %.3f %.3f\n', x0_guess(1), ...
