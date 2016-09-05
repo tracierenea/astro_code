@@ -21,15 +21,13 @@ test_case = int(sys.argv[1])
 #### FB denotes the forward-backwards results.
 meas_data = loadtxt('measurement_data.txt',
                     skiprows=1)              # time, y_true, y_meas
-states_F  = loadtxt('sat_states_F.txt',
+states    = loadtxt('sat_states.txt',
                     skiprows=1)              # size m x 17. see [1]
-states_FB = loadtxt('sat_states_FB.txt',
-                    skiprows=1)              # size m x 17. see [1])
 with open('measurement_data.txt', 'r') as f:
     first_line = f.readline().rstrip()
 x0_guess = array(map(float, first_line.split()))
 
-with open('sat_states_F.txt', 'r') as f:     #### same in both cases?
+with open('sat_states.txt', 'r') as f:     #### same in both cases?
     first_line = f.readline().rstrip()
 x0_fem_truth = array(map(float, first_line.split()))
 
@@ -44,113 +42,174 @@ Titan_image_file = os.getcwd() + "/Titan_cropped.png"
 # Read in image and plot Titan
 image = plt.imread(Titan_image_file)
 
+# Change the default font properties
+AxesFont  = {'family': 'serif', 'size': 16 }
+TitleFont = {'family': 'serif', 'size': 18 }
+LegFont   = {'family': 'serif', 'size': 12 }
+x_label   = 'Time (minutes)'
+
+# Save/label data for further use
+x_momsat  = states[:,1]  # mothersat true x-coordinates
+y_momsat  = states[:,2]  # mothersat true y-coordinates
+x_truth   = states[:,5]  # femtosat true x-coordinate
+y_truth   = states[:,6]  # femtosat true y-coordinate
+xd_truth  = states[:,7]  # femtosat true x_dot
+yd_truth  = states[:,8]  # femtosat true y_dot
+x_est     = states[:,9]  # femtosat estimated x-coord, no check
+y_est     = states[:,10] # femtosat estimated y-coord, no check
+xd_est    = states[:,11] # femtosat estimated x_dot, no check
+yd_est    = states[:,12] # femtosat estimated y_dot, no check
+
 #################### Plot 1: measurement data #####################
+y_label = 'Doppler Shift (kHz)'
+title   = ' Measurements Created for Simulation'
+
 fig = plt.gcf()
-plt.plot(meas_data[:,0]/60.0, meas_data[:,2], 'o', 
+plt.plot(meas_data[:,0]/60.0, meas_data[:,2]/1000.0, 'o', 
          label='Measurements', alpha=0.6, markerfacecolor='blue',
          markeredgecolor='blue')
-plt.plot(meas_data[:,0]/60.0, meas_data[:,1], 'k-', label='Truth')
-plt.xlabel('Time (minutes)',     fontsize=16)
-plt.ylabel('Doppler Shift (Hz)', fontsize=16)
-plt.title('Measurements Created for Simulation', fontsize=16)
-plt.legend(shadow=True, fontsize=16, loc='best')
+plt.plot(meas_data[:,0]/60.0, meas_data[:,1]/1000.0, 'k-', 
+         label='Truth')
+plt.xticks(fontsize=14, family='serif')
+plt.yticks(fontsize=14, family='serif')
+plt.xlabel(x_label, fontdict = AxesFont)
+plt.ylabel(y_label, fontdict = AxesFont)
+plt.title(title,    fontdict = TitleFont)
+plt.legend(prop=LegFont, shadow='True', loc='upper left')
 plt.savefig("figure1_case" + str(test_case) + ".png")
 plt.show()
 fig.clear()
 
 #################### Plot 2: satellite positions #################
-# For this plot, we'll let the states be the forward-only process
-# results.
-states = states_F
+title = 'Estimated and True Femtosatellite Position'
+
+# For adding text to the plot
+end = states.shape[0] - 1
+if test_case == 1:
+  mom_start_x = states[0,1] + 100
+  mom_start_y = states[0,2] - 100 
+  mom_end_x   = states[end,1] + 100
+  mom_end_y   = states[end,2]
+  # just make them on top of eachother - too close in this case
+  fem_start_x = mom_start_x
+  fem_start_y = mom_start_y
+  fem_end_x   = mom_end_x
+  fem_end_y   = mom_end_y
+elif test_case == 2:
+  mom_start_x = states[0,1] + 100
+  mom_start_y = states[0,2] - 100 
+  mom_end_x   = states[end,1] + 100
+  mom_end_y   = states[end,2] + 100
+  fem_start_x = states[0,9] + 100
+  fem_start_y = states[0,10]
+  fem_end_x   = states[end,9] + 100
+  fem_end_y   = states[end,10]
+else:
+  mom_start_x = states[0,1]   + 150
+  mom_start_y = states[0,2]   - 100 
+  mom_end_x   = states[end,1] + 100
+  mom_end_y   = states[end,2] - 100
+  fem_start_x = states[0,9]   + 150
+  fem_start_y = states[0,10]  - 100
+  fem_end_x   = states[end,9] + 200
+  fem_end_y   = states[end,10]- 100
 
 # Add image of Titan
 fig = plt.gcf()
 plt.imshow(image, extent=[-r_Titan,r_Titan,-r_Titan,r_Titan])
 # TODO: Would be nice to add the initial guess to the figure, but
 #       that isn't contained in either file
-plt.plot(states[:,1], states[:,2], 'ko', label='Mothersat')
-plt.plot(states[:,5], states[:,6], 's', label='Femtosat (truth)',
+plt.plot(x_momsat, y_momsat, 'ko', label='Mothersat')
+plt.plot(x_truth,  y_truth, 's', label='Femtosat (truth)',
          markerfacecolor='green', markeredgecolor='green')
-plt.plot(states[:,9], states[:,10], 's',
-         label='Femtosat (NLS+EKF estimate)', markerfacecolor='red',
-         markeredgecolor='red')
-plt.legend(shadow=True, fontsize=14, loc='upper left')
-# Start and end points
-end = states.shape[0] - 1
-plt.text(states[0,1]-1500,   states[0,2]-1500,  "Start", fontsize=14)
-plt.text(states[end,1]-1500, states[end,2]+500, "End",   fontsize=14)
-plt.text(states[0,9]+500,    states[0,10],      "Start", fontsize=14)
-plt.text(states[end,9]+500,  states[end,10],    "End",   fontsize=14)
+plt.plot(x_est, y_est, 's', label='Femtosat (NLS+EKF estimate)',
+         markerfacecolor='red', markeredgecolor='red')
+plt.legend(prop=LegFont, shadow='True', loc='upper left')
+# Label which end of the trajectory is start/end
+plt.text(mom_start_x, mom_start_y,  "Start", fontdict=LegFont)
+plt.text(mom_end_x,   mom_end_y,    "End",   fontdict=LegFont)
+plt.text(fem_start_x, fem_start_y,  "Start", fontdict=LegFont)
+plt.text(fem_end_x,   fem_end_y,    "End",   fontdict=LegFont)
 plt.axis('equal')
-plt.xlabel('x (km)', fontsize=16)
-plt.xlabel('y (km)', fontsize=16)
-plt.title('Estimated and True Femtosatellite Position', fontsize=16)
+plt.xticks(fontsize=14, family='serif')
+plt.yticks(fontsize=14, family='serif')
+plt.xlabel('x (km)', fontdict = AxesFont)
+plt.ylabel('y (km)', fontdict = AxesFont)
+plt.title( title,    fontdict = TitleFont)
 plt.savefig("figure2_case" + str(test_case) + ".png")
 plt.show()
 fig.clear()
 
 #################### Plot 3: measurement availability ############
-# For this plot, we'll let the states be the forward-only process
-# results.
-states = states_F
+title = 'Measurement Availability'
 
-# Add image of Titan
+# Add image of Titan. See footnote [2] for how to plot circle instead
 plt.imshow(image, extent=[-r_Titan,r_Titan,-r_Titan,r_Titan])
 
 n = states.shape[0]
 time_meas = meas_data[:,0]
 
 # Only plot a point every 30 seconds
-for index in arange(0,n,30):
-  plt.plot(states[:,1], states[:,2], 'ko')
-  # Check if this time is in the measurement time column. If so, plot
-  # in green; otherwise, plot in red.
+for index in arange(0,n,30): 
+  # Check if this time is in the measurement time column. 
   temp_index = where(time_meas == index)[0]
+
+  # If measurement was available, plot in green. Otherwise, plot in
+  # red.
   if temp_index.size:
-    plt.plot(states[index,5], states[index,6], 's', 
+    # Plot the mothersat's true position at this epoch
+    plt.plot(x_momsat[index], y_momsat[index], 's', 
+             markerfacecolor='green', markeredgecolor='black')
+
+    # Plot the femtosat's true position at this epoch
+    plt.plot(x_truth[index], y_truth[index], 's', 
              markerfacecolor='green', markeredgecolor='green')
   else:
-    plt.plot(states[index,5], states[index,6], 's',
+    # Plot the mothersat's true position at this epoch
+    plt.plot(x_momsat[index], y_momsat[index], 's', 
+             markerfacecolor='red', markeredgecolor='black')
+
+    # Plot the femtosat's true position at this epoch
+    plt.plot(x_truth[index], y_truth[index], 's', 
              markerfacecolor='red', markeredgecolor='red')
-plt.text(states[0,1],       states[0,2]-350,    "Start", fontsize=14)
-plt.text(states[end,1]-100, states[end,2]-400,  "End",   fontsize=14)
-plt.text(states[0,9]+100,   states[0,10]-400,   "Start", fontsize=14)
-plt.text(states[end,9]+100, states[end,10]-400, "End",   fontsize=14)
+plt.text(mom_start_x, mom_start_y,  "Start", fontdict=LegFont)
+plt.text(mom_end_x,   mom_end_y,    "End",   fontdict=LegFont)
+plt.text(fem_start_x, fem_start_y,  "Start", fontdict=LegFont)
+plt.text(fem_end_x,   fem_end_y,    "End",   fontdict=LegFont)
+
+# This is just to show that for some reason, the image is being
+# plotted slightly too small...
+# plt.plot(-r_Titan, 0, 'k*')
+# plt.plot(r_Titan, 0, 'k*')
+# plt.plot(0, r_Titan, 'k*')
+# plt.plot(0, -r_Titan, 'k*')
+
+plt.xticks(fontsize=14, family='serif')
+plt.yticks(fontsize=14, family='serif')
+plt.xlabel('x (km)', fontdict = AxesFont)
+plt.ylabel('y (km)', fontdict = AxesFont)
+plt.title( title,    fontdict = TitleFont)
 plt.axis('equal')
-plt.xlabel('x (km)', fontsize=16)
-plt.xlabel('y (km)', fontsize=16)
-plt.title('Measurement Availability\nGreen = possible, Red = not possible due to signal blockage', fontsize=18)
 plt.savefig("figure3_case" + str(test_case) + ".png")
 plt.show()
 fig.clear()
 
 #################### Plots 4 & 5: femtosat position error ###########
 
-# For this plot, we're going to compare residuals from both the
-# forward-only and forward-backwards KF methods.
-
-x_est_F  = states_F[:,9]
-y_est_F  = states_F[:,10]
-x_est_FB = states_FB[:,9]
-y_est_FB = states_FB[:,10]
-x_truth  = states_F[:,5] # could use F or FB; they're the same
-y_truth  = states_F[:,6]
-
+title    = 'Femtosatellite Position Estimate Error'
+y_label  = 'Error (km)'
 # Residual  = estimate - truth
-x_resids_F = x_est_F - x_truth
-y_resids_F = y_est_F - y_truth
-resids_F   = (x_resids_F**2 + y_resids_F**2)**0.5
-x_resids_FB = x_est_FB - x_truth
-y_resids_FB = y_est_FB - y_truth
-resids_FB   = (x_resids_FB**2 + y_resids_FB**2)**0.5
+x_resids = x_est - x_truth
+y_resids = y_est - y_truth
+resids   = (x_resids**2 + y_resids**2)**0.5
 
-plt.plot(states[:,0]/60.0, resids_F,  'k.', label="Forward")
-plt.plot(states[:,0]/60.0, resids_FB, 'r.', label="Forward-Backward")
+plt.plot(states[:,0]/60.0, resids, 'k.')
 plt.grid('on')
-plt.xlabel('Time (minutes)', fontsize=16)
-plt.ylabel('Error (km)',     fontsize=16)
-plt.title('Femtosatellite Position Estimate Error', fontsize=16)
-plt.legend(shadow=True, fontsize=14, loc='best')
+plt.xticks(fontsize=14, family = 'serif')
+plt.yticks(fontsize=14, family = 'serif')
+plt.xlabel(x_label,     fontdict = AxesFont)
+plt.ylabel(y_label,     fontdict = AxesFont)
+plt.title(title,        fontdict = TitleFont)
 plt.savefig("figure4_case" + str(test_case) + ".png")
 plt.show()
 fig.clear()
@@ -158,11 +217,13 @@ fig.clear()
 # Now we also want to see what the error would have been had we just
 # propagated the initial guess, without filtering any measurements.
 # So start by re-plotting the same KF estimate residuals.
-plt.plot(states[:,0]/60.0, resids_F, 'k-', label='KF Residuals')
+plt.plot(states[:,0]/60.0, resids, 'k-', label='KF Residuals')
 plt.grid('on')
-plt.xlabel('Time (minutes)', fontsize=16)
-plt.ylabel('Error (km)',     fontsize=16)
-plt.title('Femtosatellite Position Estimate Error', fontsize=16)
+plt.xticks(fontsize=14,  family = 'serif')
+plt.yticks(fontsize=14,  family = 'serif')
+plt.xlabel(x_label,      fontdict = AxesFont)
+plt.ylabel('Error (km)', fontdict = AxesFont)
+plt.title(title,         fontdict = TitleFont)
 # Next, propagate the initial guess
 def Two_body_EOM(state, time):
   G          = 6.6742e-11 / 1000**3;# km^3/kg*s^2, Univ grav constant
@@ -201,44 +262,32 @@ print "Initial position guess: %.3f" % x0_guess[0], " %.3f" % \
 print "Initial guess error   : %.3f" % initial_error
 plt.plot(states[:,0]/60.0, resids_2body, 'r-', 
          label='Guess Propagation Residuals')
-plt.legend(shadow=True, fontsize=14, loc='best')
+plt.legend(prop=LegFont, shadow='True', loc='best')
 plt.savefig("figure5_case" + str(test_case) + ".png")
 plt.show()
 fig.clear()
 
 #################### Plot 6: femtosat velocity error ###########
 
-xdot_est_F  = states_F[:,11]
-ydot_est_F  = states_F[:,12]
-xdot_est_FB = states_FB[:,11]
-ydot_est_FB = states_FB[:,12]
-xdot_truth  = states_F[:,7]     # could use F or FB; they're the same
-ydot_truth  = states_F[:,8]
-
+title       = 'Femtosatellite Velocity Estimate Error'
+y_label     = 'Error (m/s)'
 # Residual  = estimate - truth
-xdot_resids_F = xdot_est_F - xdot_truth
-ydot_resids_F = ydot_est_F - ydot_truth
-resids_F      = (xdot_resids_F**2 + ydot_resids_F**2)**0.5
-x_resids_FB   = xdot_est_FB - xdot_truth
-y_resids_FB   = ydot_est_FB - ydot_truth
-resids_FB     = (x_resids_FB**2 + y_resids_FB**2)**0.5
+xdot_resids = xd_est - xd_truth
+ydot_resids = yd_est - yd_truth
+vel_resids  = (xdot_resids**2 + ydot_resids**2)**0.5
 
-plt.plot(states[:,0]/60.0, resids_F,  'k.', label="Forward")
-plt.plot(states[:,0]/60.0, resids_FB, 'r.', label="Forward-Backward")
+plt.plot(states[:,0]/60.0, vel_resids*1000.0,  'k.')
 plt.grid('on')
-plt.xlabel('Time (minutes)', fontsize=16)
-plt.ylabel('Error (km/sec)',     fontsize=16)
-plt.title('Femtosatellite Velocity Estimate Error', fontsize=18)
-plt.legend(shadow=True, fontsize=14, loc='best')
+plt.xticks(fontsize=14, family = 'serif')
+plt.yticks(fontsize=14, family = 'serif')
+plt.xlabel(x_label,     fontdict = AxesFont)
+plt.ylabel(y_label,     fontdict = AxesFont)
+plt.title(title,        fontdict = TitleFont)
 plt.savefig("figure6_case" + str(test_case) + ".png")
 plt.show()
 fig.clear()
 
-#################### Plot 7: state error & 3sig bounds ###########
-
-# For this plot, we'll let the states be the forward-only process
-# results.
-states = states_F
+#################### Plot 7: position error & 3sig bounds ###########
 
 # Error  = estimate - truth
 time_array = states[:,0]/60.0
@@ -246,56 +295,62 @@ fig = plt.figure()
 ax1 = fig.add_subplot(211)
 
 # 3*sigma bounds
-Three_sig_11_F  = 3*(states[:,13])**0.5;
-Three_sig_22_F  = 3*(states[:,14])**0.5;
+Three_sig_11_f = 3*(states[:,13])**0.5;
+Three_sig_22_f = 3*(states[:,14])**0.5;
+Three_sig_11_b = 3*(states[:,17])**0.5;
+Three_sig_22_b = 3*(states[:,18])**0.5;
 
-x_KF_error = states[:,9]  - states[:,5]
-ax1.plot(time_array, x_KF_error,     'k-',  label ="x error")
-ax1.plot(time_array, Three_sig_11_F, 'g--', label ="P_11 forward")
-ax1.plot(time_array,-Three_sig_11_F, 'g--', label ="-P_11 forward")
-plt.title('Position Error and 3sigma Bounds: Forward Only', fontsize=18)
-plt.legend(shadow=True, fontsize=14, loc='best')
+ax1.plot(time_array, x_resids,       'k-' )
+ax1.plot(time_array, Three_sig_11_f, 'g--')
+ax1.plot(time_array,-Three_sig_11_f, 'g--')
+ax1.plot(time_array, Three_sig_11_b, 'b--')
+ax1.plot(time_array,-Three_sig_11_b, 'b--')
+plt.xticks(fontsize=14, family = 'serif')
+plt.yticks(fontsize=14, family = 'serif')
+plt.title(u'Position Error and 3\u03C3 Bounds: Forward-Backward\ngreen = forward, blue = backwards', fontdict = TitleFont)
+
 ax2 = fig.add_subplot(212)
-y_KF_error = states[:,10]  - states[:,6]
-ax2.plot(time_array, y_KF_error, 'k-', label="y error")
-ax2.plot(time_array, Three_sig_22_F, 'g--', label ="P_22 forward")
-ax2.plot(time_array,-Three_sig_22_F, 'g--', label ="-P_22 forward")
-plt.legend(shadow=True, fontsize=14, loc='best')
+ax2.plot(time_array, y_resids,       'k-' )
+ax2.plot(time_array, Three_sig_22_f, 'g--')
+ax2.plot(time_array,-Three_sig_22_f, 'g--')
+ax2.plot(time_array, Three_sig_22_b, 'b--')
+ax2.plot(time_array,-Three_sig_22_b, 'b--')
+plt.xticks(fontsize=14, family = 'serif')
+plt.yticks(fontsize=14, family = 'serif')
+
 plt.savefig("figure7_case" + str(test_case) + ".png")
 plt.show()
 fig.clear()
 
-#################### Plot 8: state error & 3sig bounds ###########
+#################### Plot 8: velocity error & 3sig bounds ###########
 
-# For this plot, we'll let the states be the forward-backward process
-# results.
-states = states_FB
-
-# Error  = estimate - truth
-time_array = states[:,0]/60.0
 fig = plt.figure()
 ax1 = fig.add_subplot(211)
 
 # 3*sigma bounds
-Three_sig_11_FBf  = 3*(states[:,13])**0.5;
-Three_sig_22_FBf  = 3*(states[:,14])**0.5;
-Three_sig_11_FBb  = 3*(states[:,17])**0.5;
-Three_sig_22_FBb  = 3*(states[:,18])**0.5;
-x_KF_error = states[:,9]  - states[:,5]
-ax1.plot(time_array,  x_KF_error, 'k-', label="x error")
-ax1.plot(time_array,  Three_sig_11_FBf,'g--',label =  "P_11 forward")
-ax1.plot(time_array, -Three_sig_11_FBf,'g--',label = "-P_11 forward")
-ax1.plot(time_array,  Three_sig_11_FBb,'b--',label = "P_11 backward")
-ax1.plot(time_array, -Three_sig_11_FBb,'b--',label ="-P_11 backward")
-plt.title('Position Error and 3sigma Bounds: Forward-Backward', fontsize=18)
+Three_sig_33_f = 3*(states[:,15])**0.5;
+Three_sig_44_f = 3*(states[:,16])**0.5;
+Three_sig_33_b = 3*(states[:,19])**0.5;
+Three_sig_44_b = 3*(states[:,20])**0.5;
+
+ax1.plot(time_array, xdot_resids,    'k-' )
+ax1.plot(time_array, Three_sig_33_f, 'g--')
+ax1.plot(time_array,-Three_sig_33_f, 'g--')
+ax1.plot(time_array, Three_sig_33_b, 'b--')
+ax1.plot(time_array,-Three_sig_33_b, 'b--')
+plt.xticks(fontsize=14, family = 'serif')
+plt.yticks(fontsize=14, family = 'serif')
+plt.title(u'Velocity Error and 3\u03C3 Bounds: Forward-Backward\ngreen = forward, blue = backwards', fontdict = TitleFont)
+
 ax2 = fig.add_subplot(212)
-y_KF_error = states[:,10]  - states[:,6]
-ax2.plot(time_array, y_KF_error, 'k-', label="y error")
-ax2.plot(time_array,  Three_sig_22_FBf,'g--',label =  "P_22 forward")
-ax2.plot(time_array, -Three_sig_22_FBf,'g--',label = "-P_22 forward")
-ax2.plot(time_array,  Three_sig_22_FBb,'b--',label = "P_22 backward")
-ax2.plot(time_array, -Three_sig_22_FBb,'b--',label ="-P_22 backward")
-plt.legend(shadow=True, fontsize=14, loc='best')
+ax2.plot(time_array, ydot_resids,    'k-' )
+ax2.plot(time_array, Three_sig_44_f, 'g--')
+ax2.plot(time_array,-Three_sig_44_f, 'g--')
+ax2.plot(time_array, Three_sig_44_b, 'b--')
+ax2.plot(time_array,-Three_sig_44_b, 'b--')
+plt.xticks(fontsize=14, family = 'serif')
+plt.yticks(fontsize=14, family = 'serif')
+
 plt.savefig("figure8_case" + str(test_case) + ".png")
 plt.show()
 fig.clear()
@@ -317,11 +372,10 @@ fig.clear()
 #  11) r_y     of femsat    (estimate)    10
 #  12) r_x_dot of femsat    (estimate)    11
 #  13) r_y_dot of femsat    (estimate)    12
-#  14) P_11 error covariance              13
-#  15) P_22 error covariance              14
-#  16) P_33 error covariance              15
-#  17) P_44 error covariance              16
-# ** if the forward-backward process file, continue with... **
+#  14) P_11 error covariance, forward     13
+#  15) P_22 error covariance, forward     14
+#  16) P_33 error covariance, forward     15
+#  17) P_44 error covariance, forward     16
 #  18) P_11 error covariance, back pass   17
 #  19) P_22 error covariance, back pass   18
 #  20) P_33 error covariance, back pass   19

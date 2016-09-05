@@ -15,8 +15,19 @@ function [] = main(test_case)
 %
 %
 
-% Constants chosen for this simulation
+% Start timer
+tic;
 
+% Octave package odepkg must be installed and loaded here
+pkg load odepkg
+
+% Ignore time stamps for all function files, this improves speed
+ignore_function_time_stamp = "all";
+
+% If there are warnings, find out which functions generated them
+debug_on_warning (true);
+
+% Constants chosen for this simulation
 G          = 6.6742e-11 / 1000**3;% km^3/kg*s^2, Univ. grav. constant
 m_Titan    = 1.3452e23;           % kg, mass of Titan
 mu         = G*m_Titan;           % km^3/s^2, Titan's grav. parameter
@@ -44,15 +55,6 @@ end
 guess_error = error_vec.*[randn; randn; randn; randn];
 
 %-------------------------------------------------------------------%
-
-% Octave package odepkg must be installed and loaded here
-pkg load odepkg
-
-% Ignore time stamps for all function files, this improves speed
-ignore_function_time_stamp = "all";
-
-% If there are warnings, find out which functions generated them
-debug_on_warning (true);
 
 % Initial state for mothersat
 y_dot0_mom = sqrt(mu/rad_mom);      % km/sec (circular orbit)
@@ -102,15 +104,19 @@ time_vec = [t0:dt:tf]';                  % time vector for analysis
 % between the sats is 0, and we'll have a divide by 0 error. So,
 % remove the NaN measurement data point of the first epoch
 if test_case == 1
-    mom_states = mom_states(2:end,:);
-    fem_states = fem_states(2:end,:);
-    time_vec   = time_vec(2:end,:);
-    m          = m-1;
+  mom_states = mom_states(2:end,:);
+  fem_states = fem_states(2:end,:);
+  time_vec   = time_vec(2:end,:);
+  m          = m-1;
 end
 
 % Generate measurement data
+%                               Note:   <------------------------
+%                               To ignore LOS test, set this flag = 0
+%                               To check LOS, set this flag = 1
+flag_for_test = 0;
 meas_data = get_measurements(time_vec, fem_states, mom_states, ...
-                             freq, rad_Titan, 1);
+                             freq, rad_Titan, flag_for_test);
 time_meas = meas_data(:,1);
 y_true    = meas_data(:,2);
 y_meas    = y_true + noise_std*randn(size(y_true));
@@ -157,6 +163,7 @@ if m_NLS > size(y_meas,1)
 end
 if ~continue_flag
   fprintf('Not able to run NLS on first %i measurements. Exiting.\n', m_NLS);
+  exit;
 end
 if continue_flag
   for index = 2:m_NLS
@@ -168,85 +175,64 @@ if continue_flag
   end
   if ~continue_flag
     fprintf('Trying to use first %i measurements for NLS estimate, but they are not continuous. Try a smaller number. Exiting. \n', m_NLS);
+    exit;
   end
 end
 
 % Second - if so, proceed with NLS run for m_NLS measurements
-if continue_flag
-  [x_est_NLS, fem_state_est_NLS] =                               ...
-  nonlinear_least_squares_orbit_det(time_vec(1:m_NLS), x0_guess, ...
-  y_meas(1:m_NLS), Phi0_vec, invR, max_count,                    ...
-  mom_states(1:m_NLS,:), freq, mu, rad_Titan);
-  
-  fprintf('\nResult from NLS, to use as guess for EKF:')
-  print_results(x0_true, x0_guess, x_est_NLS);
+[x_est_NLS, fem_state_est_NLS] =                               ...
+nonlinear_least_squares_orbit_det(time_vec(1:m_NLS), x0_guess, ...
+y_meas(1:m_NLS), Phi0_vec, invR, max_count,                    ...
+mom_states(1:m_NLS,:), freq, mu, rad_Titan);
 
-  % Step 2: Use the resulting initial state guess from the NLS method
-  % to initialize the EKF algorithm (uses all measurements).
-  [fem_state_est_EKF, P_for] =  iterated_EKF_orbit_det_forward_only(time_vec, x_est_NLS, meas_data, R, max_count, mom_states, freq, mu, rad_Titan, error_vec);
+fprintf('\nResult from NLS, to use as guess for EKF:')
+print_results(x0_true, x0_guess, x_est_NLS);
 
-  fprintf('\nForward only process done. (No estimate result.)\n');
+% Step 2: Use the resulting initial state guess from the NLS method
+% to initialize the EKF algorithm (uses all measurements).
 
-  % Save data for later plotting. (I prefer using python's matplotlib
-  % to octave's gnuplot.)
-  file_id = fopen('measurement_data.txt', 'w');
-  fprintf(file_id,'%.6e %.6e %.6e %.6e\n', x0_guess);
-  for ii = 1:size(meas_data,1)
-    fprintf(file_id,'%.6e %.6e %.6e\n',time_meas(ii), y_true(ii), ...
-                                       y_meas(ii));
-  end
 
-  file_id = fopen('sat_states_F.txt','w');
-  % first line is true initial state at time 0
-  fprintf(file_id,'%.6e %.6e %.6e %.6e\n', x0_true);
-  data_out          = zeros(m,17);
-  data_out(:,1)     = time_vec';            % time of states
-  data_out(:,2:5)   = mom_states;           % truth
-  data_out(:,6:9)   = fem_states;           % truth
-  data_out(:,10:13) = fem_state_est_EKF;    % estimate of fem state
-  data_out(:,14)    = P_for(:, 1);          % P_11 error covariance
-  data_out(:,15)    = P_for(:, 2);          % P_22 error covariance
-  data_out(:,16)    = P_for(:, 3);          % P_33 error covariance
-  data_out(:,17)    = P_for(:, 4);          % P_44 error covariance
-
-  for ii = 1:m
-    fprintf(file_id,'%.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e \n', data_out(ii,:));
-  end
-  status = fclose("all");
-
-  %%%%%%%%%%%%%%%%%%%
-
-  % Here I've left the forward-backward function in place so we can 
-  % compare the results.
-  [x_estimate, fem_state_est_EKF, P_for, P_back] =               ...
-  iterated_EKF_orbit_det(time_vec, x_est_NLS,       ...
-  meas_data, R, max_count, mom_states, freq, mu, rad_Titan,      ...
-  error_vec);
-
-  fprintf('Results from F-B EKF:')
-  print_results(x0_true, x_est_NLS, x_estimate);
-
-  file_id = fopen('sat_states_FB.txt','w');
-  % first line is true initial state at time 0
-  fprintf(file_id,'%.6e %.6e %.6e %.6e\n', x0_true);
-  data_out          = zeros(m,17);
-  data_out(:,1)     = time_vec';            % time of states
-  data_out(:,2:5)   = mom_states;           % truth
-  data_out(:,6:9)   = fem_states;           % truth
-  data_out(:,10:13) = fem_state_est_EKF;    % estimate of fem state
-  data_out(:,14)    = P_for(:, 1);          % P_11 error covariance
-  data_out(:,15)    = P_for(:, 2);          % P_22 error covariance
-  data_out(:,16)    = P_for(:, 3);          % P_33 error covariance
-  data_out(:,17)    = P_for(:, 4);          % P_44 error covariance
-  data_out(:,18)    = P_back(:, 1);         % P_11 error covariance
-  data_out(:,19)    = P_back(:, 2);         % P_22 error covariance
-  data_out(:,20)    = P_back(:, 3);         % P_33 error covariance
-  data_out(:,21)    = P_back(:, 4);         % P_44 error covariance  
-
-  for ii = 1:m
-    fprintf(file_id,'%.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e\n', data_out(ii,:));
-  end
-  status = fclose("all");
-else
-  disp('Process halted.')
+% Save data for later plotting. (I prefer using python's matplotlib
+% to octave's gnuplot.)
+file_id = fopen('measurement_data.txt', 'w');
+fprintf(file_id,'%.6e %.6e %.6e %.6e\n', x0_guess);
+for ii = 1:size(meas_data,1)
+  fprintf(file_id,'%.6e %.6e %.6e\n',time_meas(ii), y_true(ii), ...
+                                     y_meas(ii));
 end
+
+% Here I've left the forward-backward function in place so we can 
+% compare the results.
+[x_estimate, fem_state_est_EKF, P_for, P_back] =               ...
+iterated_EKF_orbit_det(time_vec, x_est_NLS,       ...
+meas_data, R, max_count, mom_states, freq, mu, rad_Titan,      ...
+error_vec);
+
+fprintf('Results from F-B EKF:')
+print_results(x0_true, x_est_NLS, x_estimate);
+
+file_id = fopen('sat_states.txt','w');
+% first line is true initial state at time 0
+fprintf(file_id,'%.6e %.6e %.6e %.6e\n', x0_true);
+data_out          = zeros(m,17);
+data_out(:,1)     = time_vec';            % time of states
+data_out(:,2:5)   = mom_states;           % truth
+data_out(:,6:9)   = fem_states;           % truth
+data_out(:,10:13) = fem_state_est_EKF;    % estimate of fem state
+data_out(:,14)    = P_for(:, 1);          % P_11 error covariance
+data_out(:,15)    = P_for(:, 2);          % P_22 error covariance
+data_out(:,16)    = P_for(:, 3);          % P_33 error covariance
+data_out(:,17)    = P_for(:, 4);          % P_44 error covariance
+data_out(:,18)    = P_back(:, 1);         % P_11 error covariance
+data_out(:,19)    = P_back(:, 2);         % P_22 error covariance
+data_out(:,20)    = P_back(:, 3);         % P_33 error covariance
+data_out(:,21)    = P_back(:, 4);         % P_44 error covariance  
+
+for ii = 1:m
+  fprintf(file_id,'%.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e %.6e\n', data_out(ii,:));
+end
+status = fclose("all");
+
+
+% End timer
+toc;
