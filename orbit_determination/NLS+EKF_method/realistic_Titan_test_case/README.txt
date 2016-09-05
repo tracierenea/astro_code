@@ -41,6 +41,9 @@ Files:
     [~, fem_states] = ode45(@TwoBodyEOM, time, X0_fem, mu);  
   to this:
     [~, fem_states] = ode45(@TwoBodyEOM, time, X0_fem, [], mu);
+- To install octave's ode package (a package for solving ordinary differential
+  equations), run this on the octave command line (NOT IN UBUNTU'S TERMINAL):
+  pkg install -forge odepkg
 - Because I prefer the flexibility of pyplot over gnuplot, plots are
   created in the python file create_plots.py (or create_plots_MC.py)
   
