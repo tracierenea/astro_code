@@ -43,6 +43,16 @@ max_count  = 3;                   % Max # of iterations to allow
 m_NLS      = 1000;                % meas's for NLS
 error_vec  = [25; 25; 0.1; 0.1];
 
+%                               Note:   <------------------------
+%                               To ignore LOS test, set this flag = 0
+%                               To check LOS, set this flag = 1
+flag_for_test = 0;
+if flag_for_test
+  fprintf('Performing LOS check when creating measurements.\n');
+else
+  fprintf('Ignoring LOS check when creating measurements.\n');
+end
+
 % Standard deviation of noise
 if     test_case == 1
   noise_std  = 10;
@@ -111,10 +121,6 @@ if test_case == 1
 end
 
 % Generate measurement data
-%                               Note:   <------------------------
-%                               To ignore LOS test, set this flag = 0
-%                               To check LOS, set this flag = 1
-flag_for_test = 0;
 meas_data = get_measurements(time_vec, fem_states, mom_states, ...
                              freq, rad_Titan, flag_for_test);
 time_meas = meas_data(:,1);
@@ -190,7 +196,13 @@ print_results(x0_true, x0_guess, x_est_NLS);
 
 % Step 2: Use the resulting initial state guess from the NLS method
 % to initialize the EKF algorithm (uses all measurements).
+[x_estimate, fem_state_est_EKF, P_for, P_back] =               ...
+iterated_EKF_orbit_det(time_vec, x_est_NLS,       ...
+meas_data, R, max_count, mom_states, freq, mu, rad_Titan,      ...
+error_vec);
 
+fprintf('Results from F-B EKF:')
+print_results(x0_true, x_est_NLS, x_estimate);
 
 % Save data for later plotting. (I prefer using python's matplotlib
 % to octave's gnuplot.)
@@ -200,16 +212,6 @@ for ii = 1:size(meas_data,1)
   fprintf(file_id,'%.6e %.6e %.6e\n',time_meas(ii), y_true(ii), ...
                                      y_meas(ii));
 end
-
-% Here I've left the forward-backward function in place so we can 
-% compare the results.
-[x_estimate, fem_state_est_EKF, P_for, P_back] =               ...
-iterated_EKF_orbit_det(time_vec, x_est_NLS,       ...
-meas_data, R, max_count, mom_states, freq, mu, rad_Titan,      ...
-error_vec);
-
-fprintf('Results from F-B EKF:')
-print_results(x0_true, x_est_NLS, x_estimate);
 
 file_id = fopen('sat_states.txt','w');
 % first line is true initial state at time 0
