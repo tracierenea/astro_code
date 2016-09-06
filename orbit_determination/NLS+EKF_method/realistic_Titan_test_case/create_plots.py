@@ -300,6 +300,7 @@ Three_sig_22_f = 3*(states[:,14])**0.5;
 Three_sig_11_b = 3*(states[:,17])**0.5;
 Three_sig_22_b = 3*(states[:,18])**0.5;
 
+y_label = 'x error (km)'
 ax1.plot(time_array, x_resids,       'k-' )
 ax1.plot(time_array, Three_sig_11_f, 'g--')
 ax1.plot(time_array,-Three_sig_11_f, 'g--')
@@ -307,8 +308,10 @@ ax1.plot(time_array, Three_sig_11_b, 'b--')
 ax1.plot(time_array,-Three_sig_11_b, 'b--')
 plt.xticks(fontsize=14, family = 'serif')
 plt.yticks(fontsize=14, family = 'serif')
+plt.ylabel(y_label,     fontdict = AxesFont)
 plt.title(u'Position Error and 3\u03C3 Bounds: Forward-Backward\ngreen = forward, blue = backwards', fontdict = TitleFont)
 
+y_label = 'y error (km)'
 ax2 = fig.add_subplot(212)
 ax2.plot(time_array, y_resids,       'k-' )
 ax2.plot(time_array, Three_sig_22_f, 'g--')
@@ -317,7 +320,8 @@ ax2.plot(time_array, Three_sig_22_b, 'b--')
 ax2.plot(time_array,-Three_sig_22_b, 'b--')
 plt.xticks(fontsize=14, family = 'serif')
 plt.yticks(fontsize=14, family = 'serif')
-
+plt.xlabel(x_label,     fontdict = AxesFont)
+plt.ylabel(y_label,     fontdict = AxesFont)
 plt.savefig("figure7_case" + str(test_case) + ".png")
 plt.show()
 fig.clear()
@@ -333,6 +337,7 @@ Three_sig_44_f = 3*(states[:,16])**0.5;
 Three_sig_33_b = 3*(states[:,19])**0.5;
 Three_sig_44_b = 3*(states[:,20])**0.5;
 
+y_label = 'x_dot error (km/s)'
 ax1.plot(time_array, xdot_resids,    'k-' )
 ax1.plot(time_array, Three_sig_33_f, 'g--')
 ax1.plot(time_array,-Three_sig_33_f, 'g--')
@@ -340,8 +345,10 @@ ax1.plot(time_array, Three_sig_33_b, 'b--')
 ax1.plot(time_array,-Three_sig_33_b, 'b--')
 plt.xticks(fontsize=14, family = 'serif')
 plt.yticks(fontsize=14, family = 'serif')
+plt.ylabel(y_label,     fontdict = AxesFont)
 plt.title(u'Velocity Error and 3\u03C3 Bounds: Forward-Backward\ngreen = forward, blue = backwards', fontdict = TitleFont)
 
+y_label = 'y_dot error (km/s)'
 ax2 = fig.add_subplot(212)
 ax2.plot(time_array, ydot_resids,    'k-' )
 ax2.plot(time_array, Three_sig_44_f, 'g--')
@@ -350,7 +357,8 @@ ax2.plot(time_array, Three_sig_44_b, 'b--')
 ax2.plot(time_array,-Three_sig_44_b, 'b--')
 plt.xticks(fontsize=14, family = 'serif')
 plt.yticks(fontsize=14, family = 'serif')
-
+plt.xlabel(x_label,     fontdict = AxesFont)
+plt.ylabel(y_label,     fontdict = AxesFont)
 plt.savefig("figure8_case" + str(test_case) + ".png")
 plt.show()
 fig.clear()
