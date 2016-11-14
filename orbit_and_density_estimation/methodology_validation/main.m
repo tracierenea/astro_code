@@ -116,7 +116,7 @@ est_error_B   = b_true - B_estimate;
 fprintf('Initial state of femtosat: ');
 fprintf('%.3f  %.3f  %.3f  %.3f  %.3f  %.3f\n',X0_fem)
 fprintf('Duration of simulation: %i sec (%.1f min)\n', m*dt, m*dt/60);
-fprintf('True final altitude at end of simulation: %.1f\n', alt_final);
+fprintf('True final altitude at end of simulation: %.1f km\n', alt_final);
 fprintf('Measurments processed: %i\n\n', k);
 fprintf('Coefficient A:\n');
 fprintf('\tTruth\t   = %.6f\n', a_true);
@@ -130,10 +130,14 @@ fprintf('\tEstimate   = %.6f\t(error = %.6f)\n', B_estimate, est_error_B);
 
 % Create plots
 figure;
-plot(states(:,1), states(:,2), 'k-', 'linewidth', 3);
-pos = [[0 0]-rad_Titan 2*rad_Titan 2*rad_Titan];
-rectangle('Position', pos, 'Curvature', [1 1], 'FaceColor', 'green', ...
-          'Edgecolor','green')
+img = imread('Titan_cropped.png');             % Load image of Titan
+scale = 1.08;
+x = [-rad_Titan*scale rad_Titan*scale];
+y = [rad_Titan*scale -rad_Titan*scale];
+image(x, y, img);                                % Plot the image
+axis xy;
+hold on;
+plot(states(:,1), states(:,2), 'k-', 'linewidth', 4);
 axis equal;
 xlabel('x (km)', 'FontSize', 16);
 ylabel('y (km)', 'FontSize', 16);
