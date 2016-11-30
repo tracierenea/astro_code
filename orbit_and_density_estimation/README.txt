@@ -1,51 +1,34 @@
 Orbit Determination and Atmospheric Density Estimation from Doppler Measurements
 
-Monte Carlo runs aren't setup yet. To kick off a single run: 
+Estimate a model of the atmospheric density of Titan. Different test cases use
+different measurement types.
 
-  > bash start_sim.sh $opt
+Directories:
 
-where:
-- start_sim does one run for the test case conditions hard-coded in main.m
-- $opt is the test case to evaluate: 1, 2, or 3
+methodology_validation              : uses the full position and velocity state
+                                      of the femtosat
+                                      
+EKF_with_Doppler_measurement        : uses only Doppler shift measurements
 
+EKF_with_Doppler_range_measurements : uses Doppler shift and range (between
+                                      mothersat and femtosat) measurements
 --------------------------------------------------------------------------------
 
 Assumptions:
 - Satellites are in orbit around Titan.
-- Satellites are considered to be point masses. The model, for now, is just the
-  two-body equation of motion; no other forces considered.
-- Titan blocking the line-of-sight between mothersat and femtosat prevents
-  Doppler measurement (i.e. if no signal can be received by mothersat, then no
-  measurement is available to Kalman filter)
-- The goal is to estimate the initial condition state (position and velocity)
-  of the femtosatellite, as well as the atmospheric density over the duration
-  of the simulation.
+- The dynamic model for the mothersat is as a point mass undergoing the two-body
+  equation of motion; no other forces considered.
+- The femtosat is model as a tiny spherical satellite experiencing the
+  gravitational force of Titan, as well as induced drag from Titan's
+  atmosphere.
+- It is assumed that measurements are available every second, despite whether or
+  not Titan is blocking the line-of-sight between the two satellites.
+- The goal is to estimate the state of the femtosatellite (position and 
+  velocity) over the duration of the simulation, as well as two constants
+  describing the atmospheric density model.
 - Can experiment with simulation parameters such as: sample rate, initial guess,
   standard deviation of the noise, and convergence criteria.
 
-  
-Files:
-- Measurements are created and the estimation method is completed in
-  the script main.m. The estimation method is two-part:
-  1) read in a small subset of the measurements and process with NLS
-     algorithm to improve the initial state guess
-  2) use this improved initial state guess to initialize the EKF,
-     which processes all the measurements and estimates the states
-     and IC of the femtosatellite
-
-  The script main.m is is currently configured for octave, but can
-  be ran in Matlab if the ode45 function calls are updated
-  accordingly. i.e. change this:
-    [~, fem_states] = ode45(@TwoBodyEOM, time, X0_fem, mu);  
-  to this:
-    [~, fem_states] = ode45(@TwoBodyEOM, time, X0_fem, [], mu);
-- To install octave's ode package (a package for solving ordinary differential
-  equations), run this on the octave command line (NOT IN UBUNTU'S TERMINAL):
-  pkg install -forge odepkg
-- Because I prefer the flexibility of pyplot over gnuplot, plots are
-  created in the python file create_plots.py (or create_plots_MC.py)
-  
-  Preliminary results from these scripts were presented at the 2016
-  AIAA/USU Small Satellite Conference in Logan, Utah.
-
-
+These scripts are configured for MATLAB. The Kalman filter algorithm in general
+seems to execute 7 times faster in MATLAB than in Octave, so Octave processing
+was abandoned.
