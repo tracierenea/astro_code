@@ -186,7 +186,7 @@ for counter = 1:MC_runs
   % initialize the EKF algorithm (uses all measurements).
   [x_estimate, fem_state_est_EKF] = iterated_EKF_orbit_det(time, ...
   x_est_NLS, meas_data, R, max_count, mom_states, freq, mu, ...
-  rad_Titan);
+  rad_Titan, error_vec);
 
   fprintf('\tx_estimate\t: %.3f %.3f %.3f %.3f\n', x_estimate(1), x_estimate(2), x_estimate(3), x_estimate(4));
 
