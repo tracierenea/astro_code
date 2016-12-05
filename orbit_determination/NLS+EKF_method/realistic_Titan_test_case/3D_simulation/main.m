@@ -19,7 +19,7 @@
 close all; clear all; clc;
 
 % Set the test case here : 1, 2, or 3 (only 1 works for now)
-test_case = 1;
+test_case = 2;
 
 %%% Start timer
 t_start = tic;
@@ -43,22 +43,69 @@ m_NLS      = 1000;                % measurements to use for NLS
 % Standard deviation of noise and guess error for each case. Note, the
 % state vector is defined as: [r_x r_y r_z r_x_dot r_y_dot r_z_dot]'
 if test_case == 1
-  noise_std  =  5;
-  error_vec  = [5; 5; 5; 0.1; 0.1; 0.1];
+    noise_std =  5;
+    error_vec = [5; 5; 5; 0.1; 0.1; 0.1];
+elseif test_case == 2 || 3 || 4
+    noise_std =  500;
+    error_vec = [5; 5; 5; 0.1; 0.1; 0.1];  
 end
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Unlike the general EKF, this algorithm isn't sensitive at all to the
+% initial covariance matrix provided to the EKF function. This is because
+% it process the measurements forwards and backwards in time "max_count"
+% number of times, so the effect of the initial covariance does not linger
+% around.... Replaced this with 100* and 1000*eye(6) and found the same
+% exact estimate of the IC for a given measurement set.
+P0 = diag(error_vec.^2);
+
 
 % A few different initial conditions for the femtosat are considered.
-y_dot0_mom = sqrt(mu/rad_mom);               % km/sec (circular orbit)
-if test_case == 1 % right after deployment from mothersat
 
-  rad_mom       = 750+rad_Titan;             % km, 750 instead of 1500
-  y_dot0_mom    = sqrt(mu/rad_mom);          % km/sec (circular orbit)
-  X0_mom        = [rad_mom; 0; 0; 0; y_dot0_mom; 0];
-  rad_fem       = rad_mom;
-  y_dot0_fem    = sqrt(mu/rad_fem);          % km/sec (circular orbit)
-  X0_fem        = [rad_fem; 0; 0; 0; y_dot0_fem; deploy_v];
+if test_case == 1 % right after deployment from mothersat
+    rad_mom    = 750+rad_Titan;       % km, 750 instead of 1500
+    y_dot0_mom = sqrt(mu/rad_mom);    % km/sec (circular orbit)
+    X0_mom     = [rad_mom; 0; 0; 0; y_dot0_mom; 0];
+    rad_fem    = rad_mom;
+    y_dot0_fem = sqrt(mu/rad_fem);    % km/sec (circular orbit)
+    X0_fem     = [rad_fem; 0; 0; 0; y_dot0_fem; deploy_v];
+    m          = m+1;                 % b/c we'll delete first one
+elseif test_case == 2 % femtosat decayed in altitude, both on x-axis
+    rad_mom    = 1500+rad_Titan;
+    y_dot0_mom = sqrt(mu/rad_mom);    % km/sec (circular orbit)
+    X0_mom     = [rad_mom; 0; 0; 0; y_dot0_mom; 0];
+    rad_fem    = 400 + rad_Titan;     % km
+    y_dot0_fem = sqrt(mu/rad_fem);    % km/sec (circular orbit)
+    X0_fem     = [rad_fem; 0; 0; 0; y_dot0_fem; deploy_v];
+elseif test_case == 3 % mom @ 60 degrees, femtosat @ 30 deg off x-axis
+    rad_mom    = 1500+rad_Titan;
+    y_dot0_mom = sqrt(mu/rad_mom);    % km/sec (circular orbit)
+    rad_fem    = 400 + rad_Titan;     % km
+    y_dot0_fem = sqrt(mu/rad_fem);    % km/sec (circular orbit)
+    vel_fem    = y_dot0_fem;
+    vel_mom    = y_dot0_mom;
+    X0_fem     = [ rad_fem*cosd(60);
+                   rad_fem*sind(60);
+                   0;
+                  -vel_fem*cosd(30);
+                   vel_fem*sind(30);
+                   deploy_v];
+    X0_mom     = [ rad_mom*cosd(30);
+                   rad_mom*sind(30);
+                   0;
+                  -vel_mom*cosd(60);
+                   vel_mom*sind(60);
+                   0];
+elseif test_case == 4 % Similar to case 2 but initial position off-plane
+    rad_mom    = 1500+rad_Titan;
+    y_dot0_mom = sqrt(mu/rad_mom);    % km/sec (circular orbit)
+    X0_mom     = [rad_mom; 0; 0; 0; y_dot0_mom; 0];
+    rad_fem    = 400 + rad_Titan;     % km
+    x_dot0_fem = sqrt(mu/rad_fem);    % km/sec (circular orbit)
+    X0_fem     = [0; 0; rad_fem; x_dot0_fem; 0; deploy_v];    
+               
 end
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % Initial state guess
 guess_error     = error_vec.*randn(6,1);
@@ -66,9 +113,6 @@ x0_true         = X0_fem;
 x0_guess        = x0_true + guess_error;
 
 % Generate truth data
-if test_case == 1
-    m           = m+1;                       % b/c we'll delete first one
-end
 tf              = t0 + (m-1)*dt;             % seconds, final time
 time_vec        = [t0:dt:tf]';               % time vector for analysis
 [~, mom_states] = ode45(@two_body_EOM, time_vec, X0_mom, [], mu);
@@ -156,11 +200,12 @@ end
 
 % Step 3: Run EKF algorithm (uses all measurements)
 [x_estimate, fem_state_est_EKF, P_for, P_back] = iterated_EKF_orbit_det(...
-time_vec, guess_for_EKF, meas_data, R, max_count, mom_states, freq, mu, ...
-rad_Titan, error_vec);
+time_vec, guess_for_EKF, meas_data, R, max_count, mom_states, freq, mu, P0);
 
 fprintf('Results from F-B EKF:\n')
 print_results(x0_true, guess_for_EKF, x_estimate);
+
+
 
 % Step 4: propogate the Kalman filter's estimate of the initial state
 % forward in time using the two-body equation (not accounting for drag).
@@ -194,14 +239,16 @@ plot3(fem_state_est_EKF(:,1),  fem_state_est_EKF(:,2),   ...
       fem_state_est_EKF(:,3),  'LineWidth', 2);
 plot3(fem_states_IC_prop(:,1), fem_states_IC_prop(:,2),  ...
       fem_states_IC_prop(:,3), 'LineWidth', 2);
-text(fem_states(1,1)+100, fem_states(1,2), fem_states(1,3), ...
-      'Start', 'FontSize', 16);
+text(fem_state_est_EKF(1,1), fem_state_est_EKF(1,2),  ...
+     fem_state_est_EKF(1,3)-200, 'Start', 'FontSize', 16);
+text(fem_state_est_EKF(end,1), fem_state_est_EKF(end,2),  ...
+     fem_state_est_EKF(end,3)-200, 'End', 'FontSize', 16); 
 xlabel('$r_{x}\:\left(km\right)$','Interpreter','LaTex');
 ylabel('$r_{y}\:\left(km\right)$','Interpreter','LaTex');
 zlabel('$r_{z}\:\left(km\right)$','Interpreter','LaTex');
-legend('Femtosat Truth', 'Femtosat EKF Estimate', 'Fem IC Estimate Propagation', 'Location', 'Best');
+legend('Truth', 'EKF Estimate', 'IC Estimate Propagation', ...
+       'Location', 'Best');
 set(gca,'FontSize',16);
-
 
 % Plot 3: position state estimate errors. 
 for index = 1:m
@@ -329,8 +376,8 @@ for index = 1:m
 end
 plot(rR_angle, resids_pos_EKF,     'LineWidth', 2); hold on;
 plot(rR_angle, resids_pos_IC_prop, 'LineWidth', 2);
-text(rR_angle(1),   resids_pos_IC_prop(1),   'Start', 'FontSize', 16);
-text(rR_angle(end), resids_pos_IC_prop(end), 'End',   'FontSize', 16);
+text(rR_angle(1)+2, resids_pos_IC_prop(1), 'Start', 'FontSize', 16);
+text(rR_angle(end), resids_pos_IC_prop(end)-5, 'End',   'FontSize', 16);
 xlabel('Angle Between r and R (degrees)');
 ylabel('Position Estimate Error (km)');
 legend('EKF Estimate', 'IC Solution Propagation', 'Location', 'Best');
