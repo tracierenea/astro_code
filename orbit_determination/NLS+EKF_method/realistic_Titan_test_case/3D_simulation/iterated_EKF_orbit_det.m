@@ -1,4 +1,5 @@
-function [x_hat, fem_states, P_f, P_b] = iterated_EKF_orbit_det(time, x0_guess, meas_data, R, max_count, mom_states, freq, mu, rad_planet, error_vec)
+function [x_hat, fem_states, P_f, P_b] = iterated_EKF_orbit_det(time, ...
+x0_guess, meas_data, R, max_count, mom_states, freq, mu, P0)
 %ITERATED_EKF_ORBIT_DET Use extended Kalman filter to find IC
 %   This is an implementation of the algorithm described in:
 %   Optimal Estimation of Dynamic Systems, 2nd Edition
@@ -46,7 +47,6 @@ odeopt   = odeset ('RelTol', 1e-12, ...
 n        = length(x0_guess);              % Number of states
 m        = size(y_meas, 1);               % Number of measurements
 m_count  = 1;                             % Initialize a meas counter
-P0       = diag(error_vec.^2);            % Initial covariance matrix
 X0       = [x0_guess;
             reshape(P0, numel(P0), 1)];   % Stack state and covar.
 count    = 1;
