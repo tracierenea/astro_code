@@ -6,7 +6,8 @@ function [] = print_results(x0_true, x0_guess, x_estimate)
 %       x_estimate : the resulting initial state estimate from the
 %                    NLS algorithm
 
-error_vec = x0_true - x_estimate;
+% Residual = estimate - truth
+error_vec = x_estimate - x0_true;
 
 fprintf('Initial state of femtosat : ');
 fprintf('[%7.1f %7.1f %7.1f %7.3f %7.3f %7.3f]  (truth)\n', x0_true); 
@@ -18,4 +19,7 @@ fprintf('Final estimate of IC      : ');
 fprintf('[%7.1f %7.1f %7.1f %7.3f %7.3f %7.3f]\n', x_estimate);
 
 fprintf('Estimate of IC error      : ');
-fprintf('[%7.1f %7.1f %7.1f %7.3f %7.3f %7.3f]\n\n', error_vec);
+fprintf('[%7.1f %7.1f %7.1f %7.3f %7.3f %7.3f]', error_vec);
+
+fprintf('  %.1f km (pos error),',        norm(error_vec(1:3)));
+fprintf('  %.3f km/sec (vel error)\n\n', norm(error_vec(4:6)));

@@ -19,7 +19,7 @@
 close all; clear all; clc;
 
 % Set the test case here : 1, 2, or 3 (only 1 works for now)
-test_case = 2;
+test_case = 4;
 
 %%% Start timer
 t_start = tic;
@@ -42,13 +42,8 @@ m_NLS      = 1000;                % measurements to use for NLS
 
 % Standard deviation of noise and guess error for each case. Note, the
 % state vector is defined as: [r_x r_y r_z r_x_dot r_y_dot r_z_dot]'
-if test_case == 1
-    noise_std =  5;
-    error_vec = [5; 5; 5; 0.1; 0.1; 0.1];
-elseif test_case == 2 || 3 || 4
-    noise_std =  500;
-    error_vec = [5; 5; 5; 0.1; 0.1; 0.1];  
-end
+noise_std =  500;
+error_vec = [5; 5; 5; 0.1; 0.1; 0.1];
 
 % Unlike the general EKF, this algorithm isn't sensitive at all to the
 % initial covariance matrix provided to the EKF function. This is because
@@ -60,25 +55,18 @@ P0 = diag(error_vec.^2);
 
 
 % A few different initial conditions for the femtosat are considered.
-
+rad_mom    = 1500+rad_Titan;
+y_dot0_mom = sqrt(mu/rad_mom);        % km/sec (circular orbit)
 if test_case == 1 % right after deployment from mothersat
-    rad_mom    = 750+rad_Titan;       % km, 750 instead of 1500
-    y_dot0_mom = sqrt(mu/rad_mom);    % km/sec (circular orbit)
     X0_mom     = [rad_mom; 0; 0; 0; y_dot0_mom; 0];
-    rad_fem    = rad_mom;
-    y_dot0_fem = sqrt(mu/rad_fem);    % km/sec (circular orbit)
-    X0_fem     = [rad_fem; 0; 0; 0; y_dot0_fem; deploy_v];
+    X0_fem     = [rad_mom; 0; 0; 0; y_dot0_mom; deploy_v];
     m          = m+1;                 % b/c we'll delete first one
 elseif test_case == 2 % femtosat decayed in altitude, both on x-axis
-    rad_mom    = 1500+rad_Titan;
-    y_dot0_mom = sqrt(mu/rad_mom);    % km/sec (circular orbit)
     X0_mom     = [rad_mom; 0; 0; 0; y_dot0_mom; 0];
     rad_fem    = 400 + rad_Titan;     % km
     y_dot0_fem = sqrt(mu/rad_fem);    % km/sec (circular orbit)
     X0_fem     = [rad_fem; 0; 0; 0; y_dot0_fem; deploy_v];
 elseif test_case == 3 % mom @ 60 degrees, femtosat @ 30 deg off x-axis
-    rad_mom    = 1500+rad_Titan;
-    y_dot0_mom = sqrt(mu/rad_mom);    % km/sec (circular orbit)
     rad_fem    = 400 + rad_Titan;     % km
     y_dot0_fem = sqrt(mu/rad_fem);    % km/sec (circular orbit)
     vel_fem    = y_dot0_fem;
@@ -96,8 +84,6 @@ elseif test_case == 3 % mom @ 60 degrees, femtosat @ 30 deg off x-axis
                    vel_mom*sind(60);
                    0];
 elseif test_case == 4 % Similar to case 2 but initial position off-plane
-    rad_mom    = 1500+rad_Titan;
-    y_dot0_mom = sqrt(mu/rad_mom);    % km/sec (circular orbit)
     X0_mom     = [rad_mom; 0; 0; 0; y_dot0_mom; 0];
     rad_fem    = 400 + rad_Titan;     % km
     x_dot0_fem = sqrt(mu/rad_fem);    % km/sec (circular orbit)
@@ -228,8 +214,8 @@ figure(1);
 plot(time_vec/60, y_meas, 'o', time_vec/60, y_true, 'k-', 'LineWidth', 2);
 xlabel('Time (minutes)');
 ylabel('Doppler Shift (Hz)');
-legend('Measurements','Truth');
-set(gca,'FontSize',16);
+set(gca,'FontSize', 16,'XLim',[0 max(time_vec/60)]);
+legend('Measurements', 'Truth', 'Location', 'Best');
 
 % Plot 2: satellite positions
 figure(2); 
@@ -239,10 +225,10 @@ plot3(fem_state_est_EKF(:,1),  fem_state_est_EKF(:,2),   ...
       fem_state_est_EKF(:,3),  'LineWidth', 2);
 plot3(fem_states_IC_prop(:,1), fem_states_IC_prop(:,2),  ...
       fem_states_IC_prop(:,3), 'LineWidth', 2);
-text(fem_state_est_EKF(1,1), fem_state_est_EKF(1,2),  ...
-     fem_state_est_EKF(1,3)-200, 'Start', 'FontSize', 16);
-text(fem_state_est_EKF(end,1), fem_state_est_EKF(end,2),  ...
-     fem_state_est_EKF(end,3)-200, 'End', 'FontSize', 16); 
+% text(fem_state_est_EKF(1,1), fem_state_est_EKF(1,2),  ...
+%      fem_state_est_EKF(1,3)-200, 'Start', 'FontSize', 16);
+% text(fem_state_est_EKF(end,1), fem_state_est_EKF(end,2),  ...
+%      fem_state_est_EKF(end,3)-200, 'End', 'FontSize', 16); 
 xlabel('$r_{x}\:\left(km\right)$','Interpreter','LaTex');
 ylabel('$r_{y}\:\left(km\right)$','Interpreter','LaTex');
 zlabel('$r_{z}\:\left(km\right)$','Interpreter','LaTex');
@@ -266,22 +252,18 @@ plot(time_vec/60, residuals_IC_prop(:,1), 'LineWidth', 2);
 % plot(time_vec/60,-sig3_EKF(:,1), 'k-',    'LineWidth', 2);
 ylabel('$r_{x}\:\left(km\right)$','Interpreter','LaTex');
 legend('EKF Estimate', 'IC Solution Propagation', 'Location', 'Best');
-set(gca,'FontSize',16, 'XTickLabel', []);
+set(gca,'FontSize',16, 'XTickLabel', [], 'XLim',[0 max(time_vec/60)]);
 subplot(312); 
 plot(time_vec/60, residuals_EKF(:,2),     'LineWidth', 2); hold on;
 plot(time_vec/60, residuals_IC_prop(:,2), 'LineWidth', 2);
-% plot(time_vec/60, sig3_EKF(:,2), 'k-',    'LineWidth', 2);
-% plot(time_vec/60,-sig3_EKF(:,2), 'k-',    'LineWidth', 2);
 ylabel('$r_{y}\:\left(km\right)$','Interpreter','LaTex');
-set(gca,'FontSize',16, 'XTickLabel', []);
+set(gca,'FontSize',16, 'XTickLabel', [], 'XLim',[0 max(time_vec/60)]);
 subplot(313); 
 plot(time_vec/60, residuals_EKF(:,3),     'LineWidth', 2); hold on;
 plot(time_vec/60, residuals_IC_prop(:,3), 'LineWidth', 2);
-% plot(time_vec/60, sig3_EKF(:,3), 'k-',    'LineWidth', 2);
-% plot(time_vec/60,-sig3_EKF(:,3), 'k-',    'LineWidth', 2);
 ylabel('$r_{z}\:\left(km\right)$','Interpreter','LaTex');
 xlabel('Time (minutes)');
-set(gca,'FontSize',16);
+set(gca,'FontSize',16,'XLim',[0 max(time_vec/60)]);
 
 % Plot 4: residuals in velocity state estimates 
 figure(4);
@@ -290,24 +272,20 @@ plot(time_vec/60, residuals_EKF(:,4)*1000,     'LineWidth', 2); hold on;
 plot(time_vec/60, residuals_IC_prop(:,4)*1000, 'LineWidth', 2);
 % plot(time_vec/60, sig3_EKF(:,4), 'k-',    'LineWidth', 2);
 % plot(time_vec/60,-sig3_EKF(:,4), 'k-',    'LineWidth', 2);
-ylabel('$r_{x}\:\left(\frac{m}{s}\right)$','Interpreter','LaTex');
+ylabel('$\dot{r}_{x}\:\left(\frac{m}{s}\right)$','Interpreter','LaTex');
 legend('EKF Estimate', 'IC Solution Propagation', 'Location', 'Best');
-set(gca,'FontSize',16, 'XTickLabel', []);
+set(gca,'FontSize',16, 'XTickLabel', [], 'XLim',[0 max(time_vec/60)]);
 subplot(312); 
 plot(time_vec/60, residuals_EKF(:,5)*1000,     'LineWidth', 2); hold on;
 plot(time_vec/60, residuals_IC_prop(:,5)*1000, 'LineWidth', 2);
-% plot(time_vec/60, sig3_EKF(:,5), 'k-',    'LineWidth', 2);
-% plot(time_vec/60,-sig3_EKF(:,5), 'k-',    'LineWidth', 2);
 ylabel('$\dot{r}_{y}\:\left(\frac{m}{s}\right)$','Interpreter','LaTex');
-set(gca,'FontSize',16, 'XTickLabel', []);
+set(gca,'FontSize',16, 'XTickLabel', [], 'XLim',[0 max(time_vec/60)]);
 subplot(313); 
 plot(time_vec/60, residuals_EKF(:,6)*1000,     'LineWidth', 2); hold on;
 plot(time_vec/60, residuals_IC_prop(:,6)*1000, 'LineWidth', 2);
-% plot(time_vec/60, sig3_EKF(:,6), 'k-',    'LineWidth', 2);
-% plot(time_vec/60,-sig3_EKF(:,6), 'k-',    'LineWidth', 2);
 ylabel('$\dot{r}_{z}\:\left(\frac{m}{s}\right)$','Interpreter','LaTex');
 xlabel('Time (minutes)');
-set(gca,'FontSize',16);
+set(gca,'FontSize',16, 'XLim',[0 max(time_vec/60)]);
 
 
 % Plot 5: combo plot with measuremetns and position error
@@ -326,7 +304,7 @@ plot(time_vec/60, resids_pos_EKF, 'k', 'LineWidth', 2);
 ax = gca;
 ax.YColor = 'k';
 ylabel('EKF Position Estimate Error (km)');
-set(gca,'FontSize', 16);
+set(gca,'FontSize',16, 'XLim',[0 max(time_vec/60)]);
 
 % Plot 6: sstimated and true position states
 figure(6);
@@ -334,22 +312,23 @@ subplot(311);
 plot(time_vec/60, fem_state_est_EKF(:,1),  'LineWidth', 2); hold on;
 plot(time_vec/60, fem_states_IC_prop(:,1), 'LineWidth', 2);
 plot(time_vec/60, fem_states(:,1),         'LineWidth', 2);
-legend('EKF Estimate', 'IC Solution Propagation', 'Truth');
+legend('EKF Estimate', 'IC Solution Propagation', 'Truth', ...
+       'Location', 'Best');
 ylabel('$r_{x}\:\left(km\right)$','Interpreter','LaTex');
-set(gca,'FontSize', 16, 'XTickLabel', []);
+set(gca,'FontSize', 16, 'XTickLabel', [], 'XLim',[0 max(time_vec/60)]);
 subplot(312);
 plot(time_vec/60, fem_state_est_EKF(:,2),  'LineWidth', 2); hold on;
 plot(time_vec/60, fem_states_IC_prop(:,2), 'LineWidth', 2);
 plot(time_vec/60, fem_states(:,2),         'LineWidth', 2);
 ylabel('$r_{y}\:\left(km\right)$','Interpreter','LaTex');
-set(gca,'FontSize', 16, 'XTickLabel', []);
+set(gca,'FontSize', 16, 'XTickLabel', [], 'XLim',[0 max(time_vec/60)]);
 subplot(313);
 plot(time_vec/60, fem_state_est_EKF(:,3),  'LineWidth', 2); hold on;
 plot(time_vec/60, fem_states_IC_prop(:,3), 'LineWidth', 2);
 plot(time_vec/60, fem_states(:,3),         'LineWidth', 2);
 ylabel('$r_{z}\:\left(km\right)$','Interpreter','LaTex');
 xlabel('Time (minutes)');
-set(gca,'FontSize', 16);
+set(gca,'FontSize', 16, 'XLim',[0 max(time_vec/60)]);
 
 % Plot 7: True positions of mothersat and femtosat
 figure(7);
@@ -363,7 +342,6 @@ xlabel('x (km)');
 ylabel('y (km)');
 zlabel('z (km)');
 axis equal;
-legend('Femtosat', 'Mothersat', 'Location', 'Best');
 set(gca,'FontSize', 16);
 
 % Plot 8: position estimation error as a function of the angle between the
@@ -376,8 +354,8 @@ for index = 1:m
 end
 plot(rR_angle, resids_pos_EKF,     'LineWidth', 2); hold on;
 plot(rR_angle, resids_pos_IC_prop, 'LineWidth', 2);
-text(rR_angle(1)+2, resids_pos_IC_prop(1), 'Start', 'FontSize', 16);
-text(rR_angle(end), resids_pos_IC_prop(end)-5, 'End',   'FontSize', 16);
+% text(rR_angle(1)+2, resids_pos_IC_prop(1), 'Start', 'FontSize', 16);
+% text(rR_angle(end), resids_pos_IC_prop(end)-5, 'End',   'FontSize', 16);
 xlabel('Angle Between r and R (degrees)');
 ylabel('Position Estimate Error (km)');
 legend('EKF Estimate', 'IC Solution Propagation', 'Location', 'Best');
