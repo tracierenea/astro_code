@@ -1,5 +1,5 @@
-function [] = print_sim_description(test_case, m, y_meas, error_vec, dt,...
-              noise_std, guess_error, X0_mom, X0_fem, x0_guess)
+function [] = print_sim_description(m, y_meas, error_vec, dt, noise_std,...
+                                    guess_error, X0_mom, X0_fem, x0_guess)
 %PRINT_SIM_DESCRIPTION Print the configuration parameters for sim
 %   Print out all of the parameters (either chosen or from random
 %   number generators) the define the current simulation run
@@ -15,7 +15,7 @@ fprintf('%i time points evaluated, %i measurements created', m, ...
         size(y_meas,1));
 fprintf(' (%.1f %%)\n', (size(y_meas,1)/m)*100);
 fprintf('Variance of guess error            : ');
-fprintf('[%.1f; %.1f; %.1f; %.2f; %.2f; %.2f; %.2f; %.2f]\n', error_vec)
+fprintf('[%.1f; %.1f; %.1f; %.2f; %.2f; %.2f; %.2e; %.2e]\n', error_vec)
 fprintf('Time step (dt)                     : %.2f  sec\n', dt);
 fprintf('Simulation duration                : %.1f  min\n', m*dt/60);
 fprintf('Std of noise specified to be       : %.3f Hz\n', noise_std);

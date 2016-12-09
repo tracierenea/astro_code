@@ -245,25 +245,25 @@ for index = 1:m
     sig3_EKF(index,:)          = 3.*P_back(index,:).^0.5;                   
 end
 figure(3);
-subplot(311); 
+subplot(311);
 plot(time_vec/60, residuals_EKF(:,1),     'LineWidth', 2); hold on;
 plot(time_vec/60, residuals_IC_prop(:,1), 'LineWidth', 2);
 % plot(time_vec/60, sig3_EKF(:,1), 'k-',    'LineWidth', 2);
 % plot(time_vec/60,-sig3_EKF(:,1), 'k-',    'LineWidth', 2);
 ylabel('$r_{x}\:\left(km\right)$','Interpreter','LaTex');
 legend('EKF Estimate', 'IC Solution Propagation', 'Location', 'Best');
-set(gca,'FontSize',16, 'XTickLabel', [], 'XLim',[0 max(time_vec/60)]);
-subplot(312); 
+set(gca,'FontSize',16, 'XTickLabel', [], 'XLim', [0 max(time_vec/60)]);
+subplot(312);
 plot(time_vec/60, residuals_EKF(:,2),     'LineWidth', 2); hold on;
 plot(time_vec/60, residuals_IC_prop(:,2), 'LineWidth', 2);
 ylabel('$r_{y}\:\left(km\right)$','Interpreter','LaTex');
-set(gca,'FontSize',16, 'XTickLabel', [], 'XLim',[0 max(time_vec/60)]);
-subplot(313); 
+set(gca,'FontSize',16, 'XTickLabel', [], 'XLim', [0 max(time_vec/60)]);
+subplot(313);
 plot(time_vec/60, residuals_EKF(:,3),     'LineWidth', 2); hold on;
 plot(time_vec/60, residuals_IC_prop(:,3), 'LineWidth', 2);
 ylabel('$r_{z}\:\left(km\right)$','Interpreter','LaTex');
 xlabel('Time (minutes)');
-set(gca,'FontSize',16,'XLim',[0 max(time_vec/60)]);
+set(gca,'FontSize', 16, 'XLim', [0 max(time_vec/60)]);
 
 % Plot 4: residuals in velocity state estimates 
 figure(4);
@@ -306,7 +306,7 @@ ax.YColor = 'k';
 ylabel('EKF Position Estimate Error (km)');
 set(gca,'FontSize',16, 'XLim',[0 max(time_vec/60)]);
 
-% Plot 6: sstimated and true position states
+% Plot 6: estimated and true position states
 figure(6);
 subplot(311); 
 plot(time_vec/60, fem_state_est_EKF(:,1),  'LineWidth', 2); hold on;

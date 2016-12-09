@@ -148,20 +148,29 @@ fprintf('\tEstimate   = %.6f\t(error = %.6f)\n', b_estimate, est_error_b);
 
 % Create plots
 
+% Set default color order. This will persist until Matlab is closed.
+% Override with individual parameters in plot commands. Using UTA colors.
+set(groot,'defaultAxesColorOrder',   ...
+    [0       100/255 177/255;        ... % UTA blue
+     245/255 128/255  38/255;        ... % UTA orange
+     105/255  41/255  23/255;        ... % UTA secondary maroon
+     0        68/255 124/255]);      ... % UTA secondary blue
+
 % Plot 1: true satellite positions (x and y)
 figure(1);
-plot(mom_states(:,1), mom_states(:,2), 'r-', 'linewidth', 4); hold on;
+plot(mom_states(:,1), mom_states(:,2), 'linewidth', 4); hold on;
 img = imread('Titan_cropped.png');             % Load image of Titan
 scale = 1.08;
 x = [-rad_Titan*scale rad_Titan*scale];
 y = [rad_Titan*scale -rad_Titan*scale];
 image(x, y, img);                              % Plot the image
 axis xy;
-plot(fem_states(:,1), fem_states(:,2), 'k-', 'linewidth', 4);
-xlabel('x (km)', 'FontSize', 16);
-ylabel('y (km)', 'FontSize', 16);
+plot(fem_states(:,1), fem_states(:,2), 'linewidth', 4);
+xlabel('x (km)');
+ylabel('y (km)');
 title('True Satellite Positions');
 axis equal;
+set(gca,'FontSize', 16);
 
 % Plot 2: measurement data: truth and synthetically created meas's
 figure(2);
@@ -169,62 +178,76 @@ subplot(211);
 plot(time_vec/60, meas_data(:,2), 'o', time_vec/60, y_true(:,1), 'k-');
 hold on;
 plot(time_vec(1:m-1)/60, y_hat_store(:,1), 'r-');
-ylabel('Doppler Shift (Hz)', 'FontSize', 16);
+ylabel('Doppler Shift (Hz)');
 legend('Measurements', 'Truth', 'Estimates (y-hat)');
+set(gca,'FontSize', 16, 'XTickLabel', [], 'XLim', [0 max(time_vec/60)]);
 subplot(212);
 plot(time_vec/60, meas_data(:,3), 'o', time_vec/60, y_true(:,2), 'k-');
 hold on;
 plot(time_vec(1:m-1)/60, y_hat_store(:,2), 'r-');
-xlabel('Time (minutes)' , 'FontSize', 16);
-ylabel('Range (km)', 'FontSize', 16);
-legend('Measurements', 'Truth', 'Estimates (y-hat)');
+xlabel('Time (minutes)');
+ylabel('Range (km)');
+set(gca,'FontSize', 16, 'XLim', [0 max(time_vec/60)]);
 
-% Estimated and true states
-figure; % Components of position vector
+% Plot 3: Estimated and true position states
+figure(3);
 subplot(311); 
-plot(time_vec, fem_state_est_EKF(:,1), 'r-'); hold on;
-plot(time_vec, fem_states(:,1), 'k-');
-title('Position');
-ylabel('r_x');
+plot(time_vec/60, fem_state_est_EKF(:,1), 'linewidth', 2); hold on;
+plot(time_vec/60, fem_states(:,1), 'linewidth', 2);
+title('Femtosatellite Position States');
+ylabel('$r_{x}\:\left(km\right)$','Interpreter','LaTex');
 legend('Estimate', 'Truth');
+set(gca,'FontSize', 16, 'XTickLabel', [], 'XLim', [0 max(time_vec/60)]);
 subplot(312);
-plot(time_vec, fem_state_est_EKF(:,2), 'r-'); hold on;
-plot(time_vec, fem_states(:,2), 'k-');
-ylabel('r_y');
+plot(time_vec/60, fem_state_est_EKF(:,2), 'linewidth', 2); hold on;
+plot(time_vec/60, fem_states(:,2), 'linewidth', 2);
+ylabel('$r_{y}\:\left(km\right)$','Interpreter','LaTex');
+set(gca,'FontSize', 16, 'XTickLabel', [], 'XLim',[0 max(time_vec/60)]);
 subplot(313);
-plot(time_vec, fem_state_est_EKF(:,3), 'r-'); hold on;
-plot(time_vec, fem_states(:,3), 'k-');
-ylabel('r_z');
+plot(time_vec/60, fem_state_est_EKF(:,3), 'linewidth', 2); hold on;
+plot(time_vec/60, fem_states(:,3), 'linewidth', 2);
+ylabel('$r_{z}\:\left(km\right)$','Interpreter','LaTex');
+xlabel('Time (minutes)');
+set(gca,'FontSize', 16, 'XLim', [0 max(time_vec/60)]);
 
-figure; % Components of velocity vector
+% Plot 4: Estimated and true velocity states
+figure(4);
 subplot(311); 
-plot(time_vec, fem_state_est_EKF(:,4), 'r-'); hold on;
-plot(time_vec, fem_states(:,4), 'k-');
+plot(time_vec/60, fem_state_est_EKF(:,4), 'linewidth', 2); hold on;
+plot(time_vec/60, fem_states(:,4), 'linewidth', 2);
 title('Velocity');
-ylabel('r_x dot');
+ylabel('$\dot{r}_{x}\:\left(\frac{m}{s}\right)$','Interpreter','LaTex');
 legend('Estimate', 'Truth');
+set(gca,'FontSize', 16, 'XTickLabel', [], 'XLim', [0 max(time_vec/60)]);
 subplot(312);
-plot(time_vec, fem_state_est_EKF(:,5), 'r-'); hold on;
-plot(time_vec, fem_states(:,5), 'k-');
-ylabel('r_y dot');
+plot(time_vec/60, fem_state_est_EKF(:,5), 'linewidth', 2); hold on;
+plot(time_vec/60, fem_states(:,5), 'linewidth', 2);
+ylabel('$\dot{r}_{y}\:\left(\frac{m}{s}\right)$','Interpreter','LaTex');
+set(gca,'FontSize', 16, 'XTickLabel', [], 'XLim', [0 max(time_vec/60)]);
 subplot(313);
-plot(time_vec, fem_state_est_EKF(:,6), 'r-'); hold on;
-plot(time_vec, fem_states(:,6), 'k-');
-ylabel('r_z dot');
+plot(time_vec/60, fem_state_est_EKF(:,6), 'linewidth', 2); hold on;
+plot(time_vec/60, fem_states(:,6), 'linewidth', 2');
+ylabel('$\dot{r}_{z}\:\left(\frac{m}{s}\right)$','Interpreter','LaTex');
+xlabel('Time (minutes)');
+set(gca,'FontSize', 16, 'XLim', [0 max(time_vec/60)]);
 
-figure; % Estimates of coefficients a and b
+% Plot 5: Estimates of coefficients a and b
+figure(5);
 subplot(211);
-plot(time_vec, fem_state_est_EKF(:,7), 'r-'); hold on;
-plot(time_vec, a_true*ones(size(time_vec)), 'k-');
+plot(time_vec/60, fem_state_est_EKF(:,7), 'linewidth', 2); hold on;
+plot(time_vec/60, a_true*ones(size(time_vec)), 'linewidth', 2);
 ylabel('Coefficient a');
 legend('Estimate', 'Truth');
+set(gca,'FontSize',16, 'XLim',[0 max(time_vec/60)], 'XTickLabel', []);
 subplot(212);
-plot(time_vec, fem_state_est_EKF(:,8), 'r-'); hold on;
-plot(time_vec, b_true*100*ones(size(time_vec)), 'k-');
+plot(time_vec/60, fem_state_est_EKF(:,8), 'linewidth', 2); hold on;
+plot(time_vec/60, b_true*100*ones(size(time_vec)), 'linewidth', 2);
 ylabel('Coefficient b');
-legend('Estimate', 'Truth');
+set(gca,'FontSize', 16, 'XLim',[0 max(time_vec/60)]);
+xlabel('Time (minutes)');
 
-% figure; % Components of acceleration due to drag vector
+% Plot 6: components of acceleration due to drag vector
+% figure(6); % Components of acceleration due to drag vector
 % for index = 1:m+1
 %     r_vec_est = fem_state_est_EKF(index, 1:3);
 %     r_vec_true = fem_states(index, 1:3);
@@ -255,23 +278,23 @@ legend('Estimate', 'Truth');
 % plot(time_vec, drag_true(:,3), 'k-');
 % ylabel('drag_z');
 
-% Plot: satellite positions
-figure; 
-plot3(fem_states(:,1), fem_states(:,2), fem_states(:,3), 'g-');  % truth
-hold on;
-plot3(fem_state_est_EKF(:,1),  fem_state_est_EKF(:,2),  ...
-      fem_state_est_EKF(:,3),  'r-');
-plot3(mom_states(:,1), mom_states(:,2), mom_states(:,3), 'k-');
-legend('Femtosat Truth', 'Femtosat Estimate', 'Mothersat');
-xlabel('x (km)');
-ylabel('y (km)');
-zlabel('z (km)');
+% Plot 7: satellite positions
+figure(7);
 [th, phi] = meshgrid(linspace(0, 2*pi, 50), linspace(-pi, pi, 50));
 [x,y,z]   = sph2cart(th, phi, rad_Titan*ones(50,50));
 surface(x,y,z,'FaceColor', 'yellow'); % add sphere as placeholder for Titan
+hold on;
+plot3(fem_states(:,1), fem_states(:,2), fem_states(:,3), 'linewidth', 2);  % truth
+plot3(fem_state_est_EKF(:,1),  fem_state_est_EKF(:,2),  ...
+      fem_state_est_EKF(:,3), 'linewidth', 2);
+% plot3(mom_states(:,1), mom_states(:,2), mom_states(:,3), 'linewidth', 2);
+legend('Titan', 'Femtosat Truth', 'Femtosat Estimate');
+xlabel('x (km)');
+ylabel('y (km)');
+zlabel('z (km)');
+set(gca,'FontSize', 16);
 
-% Plot: position/velocity estimate error
-fig = figure;
+% Plot 8: position/velocity estimate error
 x_pos_resids = fem_state_est_EKF(:,1) - fem_states(:,1);
 y_pos_resids = fem_state_est_EKF(:,2) - fem_states(:,2);
 z_pos_resids = fem_state_est_EKF(:,3) - fem_states(:,3);
@@ -286,19 +309,21 @@ for index = 1:m
                               y_dot_resids(index,1);
                               z_dot_resids(index,1)]);
 end
+fig = figure(8);
 left_color = [0 0 153/255];
 right_color = [0 102/255 0];
 set(fig,'defaultAxesColorOrder',[left_color; right_color]);
 yyaxis left;
 plot(time_vec/60, resids_pos, '-', 'Linewidth', 2);
-xlabel('Time (minutes)');
+xlabel('Time (minutes)', 'FontSize', 16);
 ylabel('Position Estimate Error (km)');
 yyaxis right
 plot(time_vec/60, resids_vel, '--', 'Linewidth', 2);
 ylabel('Velocity Estimate Error (km/sec)');
+set(gca,'FontSize',16,'XLim',[0 max(time_vec/60)]);
 
 % Combo plot  - % fix this for both measurement types.....
-% figure;
+% figure(9);
 % yyaxis left;
 % plot(time_vec/60, meas_data(:,2), 'o', time_vec/60, y_true, 'k-');
 % xlabel('Time (minutes)');
@@ -308,12 +333,8 @@ ylabel('Velocity Estimate Error (km/sec)');
 % plot(time_vec/60, resids_pos, 'r-');
 % ylabel('Position Estimate Error (km)');
 
- 
-% % Plot 5: position error as a function of...geometric relationship, lat/lo
-% % or maybe direction cosine angle?
 
-% % Plot 6: femtosat altitude vs. time (i.e. decay)
-figure;
+% Plot 10: femtosat altitude vs. time (i.e. decay)
 counter = 1;
 for index = 1:100:m
     r_true          = norm([fem_states(index,1),        ...
@@ -326,14 +347,16 @@ for index = 1:100:m
     z_est(counter)  = r_est  - rad_Titan;
     counter = counter + 1;
 end
-plot(time_vec(1:100:m)/60, z_true, 'k-'); hold on;
-plot(time_vec(1:100:m)/60, z_est,  'r-');
+figure(10);  % Orbital decay of femtosatellite
+plot(time_vec(1:100:m)/60, z_true, 'LineWidth', 2); hold on;
+plot(time_vec(1:100:m)/60, z_est, 'LineWidth', 2);
 legend('Truth', 'Estimate');
 xlabel('Time (minutes)');
 ylabel('Altitude (km)');
-title('Orbital Decay of Femtosatellite');
+set(gca,'FontSize',16);
 
-figure; % Estimated covariances
+% Plot 11: estimated covariances
+figure(11);
 subplot(811); plot(P_EKF(:,1)); ylabel('P_{11} (r_x)');
 subplot(812); plot(P_EKF(:,2)); ylabel('P_{22} (r_y)');
 subplot(813); plot(P_EKF(:,3)); ylabel('P_{33} (r_z)');
@@ -342,9 +365,44 @@ subplot(815); plot(P_EKF(:,5)); ylabel('P_{55} (r_y dot)');
 subplot(816); plot(P_EKF(:,6)); ylabel('P_{66} (r_z dot)');
 subplot(817); plot(P_EKF(:,7)); ylabel('P_{77} (a)');
 subplot(818); plot(P_EKF(:,8)); ylabel('P_{88} (b)');
-xlabel('Time (seconds)');
+xlabel('Time (seconds)', 'FontSize', 16);
+
+% Plot 12: alternative to plot 3, create plot of position state residuals
+figure(12);
+subplot(311); 
+plot(time_vec/60, x_pos_resids, 'LineWidth', 2);
+ylabel('$r_{x}\:\left(km\right)$','Interpreter','LaTex');
+set(gca,'FontSize',16, 'XTickLabel', [], 'XLim', [0 max(time_vec/60)]);
+subplot(312);
+plot(time_vec/60, y_pos_resids, 'LineWidth', 2);
+ylabel('$r_{y}\:\left(km\right)$','Interpreter','LaTex');
+set(gca,'FontSize',16, 'XTickLabel', [], 'XLim', [0 max(time_vec/60)]);
+subplot(313);
+plot(time_vec/60, z_pos_resids, 'LineWidth', 2);
+ylabel('$r_{z}\:\left(km\right)$','Interpreter','LaTex');
+xlabel('Time (minutes)');
+set(gca,'FontSize', 16, 'XLim', [0 max(time_vec/60)]);
+
+% Plot 13: alternative to plot 4, create plot of velocity state residuals
+figure(13);
+subplot(311); 
+plot(time_vec/60, x_dot_resids, 'LineWidth', 2);
+ylabel('$\dot{r}_{x}\:\left(\frac{m}{s}\right)$', 'Interpreter', 'LaTex');
+set(gca,'FontSize',16, 'XTickLabel', [], 'XLim', [0 max(time_vec/60)]);
+subplot(312);
+plot(time_vec/60, y_dot_resids, 'LineWidth', 2);
+ylabel('$\dot{r}_{y}\:\left(\frac{m}{s}\right)$', 'Interpreter', 'LaTex');
+set(gca,'FontSize',16, 'XTickLabel', [], 'XLim', [0 max(time_vec/60)]);
+subplot(313);
+plot(time_vec/60, z_dot_resids, 'LineWidth', 2);
+ylabel('$\dot{r}_{z}\:\left(\frac{m}{s}\right)$', 'Interpreter', 'LaTex');
+xlabel('Time (minutes)');
+set(gca,'FontSize', 16, 'XLim', [0 max(time_vec/60)]);
 
 % End timer & print status
 t_end = toc(t_start);
 fprintf('Simulation run time: %d minutes and %i seconds\n', ...
         floor(t_end/60), floor(rem(t_end,60)));
+    
+% Save all variables from the current workspace
+save Doppler_range_sim.mat;
