@@ -220,11 +220,11 @@ legend('Measurements', 'Truth', 'Location', 'Best');
 % Plot 2: satellite positions
 figure(2); 
 plot3(fem_states(:,1), fem_states(:,2), fem_states(:,3), ...
-      'k--', 'LineWidth', 2); hold on;
+      'k-', 'LineWidth', 2); hold on;
 plot3(fem_state_est_EKF(:,1),  fem_state_est_EKF(:,2),   ...
-      fem_state_est_EKF(:,3),  'LineWidth', 2);
+      fem_state_est_EKF(:,3),  '--', 'LineWidth', 2);
 plot3(fem_states_IC_prop(:,1), fem_states_IC_prop(:,2),  ...
-      fem_states_IC_prop(:,3), 'LineWidth', 2);
+      fem_states_IC_prop(:,3), '-.', 'LineWidth', 2);
 % text(fem_state_est_EKF(1,1), fem_state_est_EKF(1,2),  ...
 %      fem_state_est_EKF(1,3)-200, 'Start', 'FontSize', 16);
 % text(fem_state_est_EKF(end,1), fem_state_est_EKF(end,2),  ...
@@ -246,21 +246,21 @@ for index = 1:m
 end
 figure(3);
 subplot(311);
-plot(time_vec/60, residuals_EKF(:,1),     'LineWidth', 2); hold on;
-plot(time_vec/60, residuals_IC_prop(:,1), 'LineWidth', 2);
+plot(time_vec/60, residuals_EKF(:,1),     '--', 'LineWidth', 2); hold on;
+plot(time_vec/60, residuals_IC_prop(:,1), '-',  'LineWidth', 2);
 % plot(time_vec/60, sig3_EKF(:,1), 'k-',    'LineWidth', 2);
 % plot(time_vec/60,-sig3_EKF(:,1), 'k-',    'LineWidth', 2);
 ylabel('$r_{x}\:\left(km\right)$','Interpreter','LaTex');
 legend('EKF Estimate', 'IC Solution Propagation', 'Location', 'Best');
 set(gca,'FontSize',16, 'XTickLabel', [], 'XLim', [0 max(time_vec/60)]);
 subplot(312);
-plot(time_vec/60, residuals_EKF(:,2),     'LineWidth', 2); hold on;
-plot(time_vec/60, residuals_IC_prop(:,2), 'LineWidth', 2);
+plot(time_vec/60, residuals_EKF(:,2),     '--', 'LineWidth', 2); hold on;
+plot(time_vec/60, residuals_IC_prop(:,2), '-',  'LineWidth', 2);
 ylabel('$r_{y}\:\left(km\right)$','Interpreter','LaTex');
 set(gca,'FontSize',16, 'XTickLabel', [], 'XLim', [0 max(time_vec/60)]);
 subplot(313);
-plot(time_vec/60, residuals_EKF(:,3),     'LineWidth', 2); hold on;
-plot(time_vec/60, residuals_IC_prop(:,3), 'LineWidth', 2);
+plot(time_vec/60, residuals_EKF(:,3),     '--', 'LineWidth', 2); hold on;
+plot(time_vec/60, residuals_IC_prop(:,3), '-',  'LineWidth', 2);
 ylabel('$r_{z}\:\left(km\right)$','Interpreter','LaTex');
 xlabel('Time (minutes)');
 set(gca,'FontSize', 16, 'XLim', [0 max(time_vec/60)]);
@@ -268,21 +268,21 @@ set(gca,'FontSize', 16, 'XLim', [0 max(time_vec/60)]);
 % Plot 4: residuals in velocity state estimates 
 figure(4);
 subplot(311); 
-plot(time_vec/60, residuals_EKF(:,4)*1000,     'LineWidth', 2); hold on;
-plot(time_vec/60, residuals_IC_prop(:,4)*1000, 'LineWidth', 2);
+plot(time_vec/60, residuals_EKF(:,4)*1000,     '--', 'LineWidth', 2); hold on;
+plot(time_vec/60, residuals_IC_prop(:,4)*1000, '-',  'LineWidth', 2);
 % plot(time_vec/60, sig3_EKF(:,4), 'k-',    'LineWidth', 2);
 % plot(time_vec/60,-sig3_EKF(:,4), 'k-',    'LineWidth', 2);
 ylabel('$\dot{r}_{x}\:\left(\frac{m}{s}\right)$','Interpreter','LaTex');
 legend('EKF Estimate', 'IC Solution Propagation', 'Location', 'Best');
 set(gca,'FontSize',16, 'XTickLabel', [], 'XLim',[0 max(time_vec/60)]);
 subplot(312); 
-plot(time_vec/60, residuals_EKF(:,5)*1000,     'LineWidth', 2); hold on;
-plot(time_vec/60, residuals_IC_prop(:,5)*1000, 'LineWidth', 2);
+plot(time_vec/60, residuals_EKF(:,5)*1000,     '--', 'LineWidth', 2); hold on;
+plot(time_vec/60, residuals_IC_prop(:,5)*1000, '-',  'LineWidth', 2);
 ylabel('$\dot{r}_{y}\:\left(\frac{m}{s}\right)$','Interpreter','LaTex');
 set(gca,'FontSize',16, 'XTickLabel', [], 'XLim',[0 max(time_vec/60)]);
 subplot(313); 
-plot(time_vec/60, residuals_EKF(:,6)*1000,     'LineWidth', 2); hold on;
-plot(time_vec/60, residuals_IC_prop(:,6)*1000, 'LineWidth', 2);
+plot(time_vec/60, residuals_EKF(:,6)*1000,     '--', 'LineWidth', 2); hold on;
+plot(time_vec/60, residuals_IC_prop(:,6)*1000, '-',  'LineWidth', 2);
 ylabel('$\dot{r}_{z}\:\left(\frac{m}{s}\right)$','Interpreter','LaTex');
 xlabel('Time (minutes)');
 set(gca,'FontSize',16, 'XLim',[0 max(time_vec/60)]);
@@ -309,32 +309,32 @@ set(gca,'FontSize',16, 'XLim',[0 max(time_vec/60)]);
 % Plot 6: estimated and true position states
 figure(6);
 subplot(311); 
-plot(time_vec/60, fem_state_est_EKF(:,1),  'LineWidth', 2); hold on;
-plot(time_vec/60, fem_states_IC_prop(:,1), 'LineWidth', 2);
-plot(time_vec/60, fem_states(:,1),         'LineWidth', 2);
+plot(time_vec/60, fem_state_est_EKF(:,1),  '--', 'LineWidth', 2); hold on;
+plot(time_vec/60, fem_states_IC_prop(:,1), '-.', 'LineWidth', 2);
+plot(time_vec/60, fem_states(:,1),         '-',  'LineWidth', 2);
 legend('EKF Estimate', 'IC Solution Propagation', 'Truth', ...
        'Location', 'Best');
 ylabel('$r_{x}\:\left(km\right)$','Interpreter','LaTex');
 set(gca,'FontSize', 16, 'XTickLabel', [], 'XLim',[0 max(time_vec/60)]);
 subplot(312);
-plot(time_vec/60, fem_state_est_EKF(:,2),  'LineWidth', 2); hold on;
-plot(time_vec/60, fem_states_IC_prop(:,2), 'LineWidth', 2);
-plot(time_vec/60, fem_states(:,2),         'LineWidth', 2);
+plot(time_vec/60, fem_state_est_EKF(:,2),  '--', 'LineWidth', 2); hold on;
+plot(time_vec/60, fem_states_IC_prop(:,2), '-.', 'LineWidth', 2);
+plot(time_vec/60, fem_states(:,2),         '-',  'LineWidth', 2);
 ylabel('$r_{y}\:\left(km\right)$','Interpreter','LaTex');
 set(gca,'FontSize', 16, 'XTickLabel', [], 'XLim',[0 max(time_vec/60)]);
 subplot(313);
-plot(time_vec/60, fem_state_est_EKF(:,3),  'LineWidth', 2); hold on;
-plot(time_vec/60, fem_states_IC_prop(:,3), 'LineWidth', 2);
-plot(time_vec/60, fem_states(:,3),         'LineWidth', 2);
+plot(time_vec/60, fem_state_est_EKF(:,3),  '--', 'LineWidth', 2); hold on;
+plot(time_vec/60, fem_states_IC_prop(:,3), '-.', 'LineWidth', 2);
+plot(time_vec/60, fem_states(:,3),         '-',  'LineWidth', 2);
 ylabel('$r_{z}\:\left(km\right)$','Interpreter','LaTex');
 xlabel('Time (minutes)');
 set(gca,'FontSize', 16, 'XLim',[0 max(time_vec/60)]);
 
 % Plot 7: True positions of mothersat and femtosat
 figure(7);
-plot3(fem_states(:,1), fem_states(:,2), fem_states(:,3), 'linewidth', 4);
+plot3(fem_states(:,1), fem_states(:,2), fem_states(:,3), '--', 'linewidth', 4);
 hold on;
-plot3(mom_states(:,1), mom_states(:,2), mom_states(:,3), 'linewidth', 4);
+plot3(mom_states(:,1), mom_states(:,2), mom_states(:,3), '-',  'linewidth', 4);
 [th, phi] = meshgrid(linspace(0, 2*pi, 50), linspace(-pi, pi, 50));
 [x,y,z]   = sph2cart(th, phi, rad_Titan*ones(50,50));
 surface(x,y,z,'FaceColor', 'yellow');
@@ -346,14 +346,14 @@ set(gca,'FontSize', 16);
 
 % Plot 8: position estimation error as a function of the angle between the
 % femtosat and mothersat position vectors
-figure(8);
 for index = 1:m
     r = fem_states(index,1:3);
     R = mom_states(index,1:3);
     rR_angle(index) = subspace(r',R') * 180/pi;
 end
-plot(rR_angle, resids_pos_EKF,     'LineWidth', 2); hold on;
-plot(rR_angle, resids_pos_IC_prop, 'LineWidth', 2);
+figure(8);
+plot(rR_angle, resids_pos_EKF,     '--', 'LineWidth', 2); hold on;
+plot(rR_angle, resids_pos_IC_prop, '-',  'LineWidth', 2);
 % text(rR_angle(1)+2, resids_pos_IC_prop(1), 'Start', 'FontSize', 16);
 % text(rR_angle(end), resids_pos_IC_prop(end)-5, 'End',   'FontSize', 16);
 xlabel('Angle Between r and R (degrees)');
@@ -365,3 +365,6 @@ set(gca,'FontSize', 16);
 t_end = toc(t_start);
 fprintf('Simulation run time: %d minutes and %i seconds\n', ...
         floor(t_end/60), floor(rem(t_end,60)));
+
+% Save all variables from the current workspace
+save 3D_OD_sim.mat;
