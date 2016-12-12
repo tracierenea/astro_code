@@ -234,13 +234,13 @@ set(gca,'FontSize', 16, 'XLim', [0 max(time_vec/60)]);
 % Plot 5: Estimates of coefficients a and b
 figure(5);
 subplot(211);
-plot(time_vec/60, fem_state_est_EKF(:,7), 'linewidth', 2); hold on;
+plot(time_vec/60, fem_state_est_EKF(:,7), '--', 'linewidth', 2); hold on;
 plot(time_vec/60, a_true*ones(size(time_vec)), 'linewidth', 2);
 ylabel('Coefficient a');
 legend('Estimate', 'Truth');
 set(gca,'FontSize',16, 'XLim',[0 max(time_vec/60)], 'XTickLabel', []);
 subplot(212);
-plot(time_vec/60, fem_state_est_EKF(:,8), 'linewidth', 2); hold on;
+plot(time_vec/60, fem_state_est_EKF(:,8), '--', 'linewidth', 2); hold on;
 plot(time_vec/60, b_true*100*ones(size(time_vec)), 'linewidth', 2);
 ylabel('Coefficient b');
 set(gca,'FontSize', 16, 'XLim',[0 max(time_vec/60)]);
@@ -349,7 +349,7 @@ for index = 1:100:m
 end
 figure(10);  % Orbital decay of femtosatellite
 plot(time_vec(1:100:m)/60, z_true, 'LineWidth', 2); hold on;
-plot(time_vec(1:100:m)/60, z_est, 'LineWidth', 2);
+plot(time_vec(1:100:m)/60, z_est, '--', 'LineWidth', 2);
 legend('Truth', 'Estimate');
 xlabel('Time (minutes)');
 ylabel('Altitude (km)');
